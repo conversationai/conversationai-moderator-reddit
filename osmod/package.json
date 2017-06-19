@@ -1,0 +1,18 @@
+{
+  "name": "osmod-reddit-demo",
+  "version": "1.0.0",
+  "description": "Demo",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/cloud-debug": "0.9.1",
+    "@osmod/cli": "1.6.8",
+    "@google/cloud-trace": "0.6.2",
+    "@osmod/backend-api": "1.6.8",
+    "@osmod/backend-core": "1.6.8",
+    "@osmod/frontend-web": "1.6.8"
+  }
+}

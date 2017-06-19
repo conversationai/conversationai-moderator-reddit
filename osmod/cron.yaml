@@ -1,0 +1,10 @@
+cron:
+- description: Poll Reddit
+  url: /tasks/reddit/pollSubmissions
+  schedule: every 10 minutes
+- description: Poll Reddit
+  url: /tasks/reddit/pollComments
+  schedule: every 2 minutes
+- description: Nightly clear
+  url: /tasks/reddit/clearComments
+  schedule: every 24 hours

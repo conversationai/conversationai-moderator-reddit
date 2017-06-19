@@ -1,0 +1,31 @@
+{
+  "name": "reddit-plugin",
+  "description": "NYT Integration for OSMod project",
+  "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "compile": "tsc --sourceMap --outDir dist --declaration",
+    "watch": "tsc --sourceMap --outDir dist --declaration --watch"
+  },
+  "engines": {
+    "node": "6.9.5"
+  },
+  "dependencies": {
+    "@google/cloud-debug": "0.9.1",
+    "@google/cloud-trace": "0.6.2",
+    "@osmod/backend-core": "1.6.8",
+    "@osmod/backend-api": "1.6.8",
+    "@osmod/frontend-web": "1.6.8",
+    "@types/convict": "0.6.33",
+    "@types/express": "4.0.35",
+    "@types/node": "6.0.59",
+    "convict": "2.0.0",
+    "express": "4.14.1",
+    "snoowrap": "1.12.0",
+    "emoji-strip": "1.0.1"
+  },
+  "devDependencies": {
+    "typescript": "2.1.5",
+    "reddit-oauth-helper": "0.3.0"
+  }
+}

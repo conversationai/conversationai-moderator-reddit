@@ -1,0 +1,14 @@
+#!/bin/bash
+
+cd osmod
+rm -rf node_modules
+npm install
+
+cd reddit-plugin
+rm -rf node_modules
+npm install
+npm run compile
+
+cd ../../
+
+gcloud app deploy -q --project="osmod-opensource-demo-2" --promote osmod/app.yaml osmod/cron.yaml

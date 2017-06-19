@@ -1,0 +1,8 @@
+{
+  "name": "osmod-reddit",
+  "version": "1.0.0",
+  "description": "Demo reddit integration",
+  "dependencies": {
+    "@osmod/cli": "dev"
+  }
+}

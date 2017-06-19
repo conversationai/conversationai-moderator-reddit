@@ -1,0 +1,34 @@
+runtime: custom
+env: flex
+threadsafe: true
+service: default
+
+handlers:
+- url: /.*
+  script: IGNORED
+
+beta_settings:
+  cloud_sql_instances: ""
+
+env_variables:
+  MAX_COMMENTS_PER_POLL: 10
+  DATABASE_NAME: ""
+  DATABASE_USER: ""
+  DATABASE_PASSWORD: ""
+  DATABASE_HOST: ""
+  DATABASE_SOCKET: ""
+  HTTPS_LINKS_ONLY: ""
+  TOKEN_SECRET: ""
+  TOKEN_ISSUER: ""
+  WORKER_RUN_IMMEDIATELY: ""
+  API_URL: ""
+  FRONTEND_URL: ""
+  APP_NAME: ""
+  PUBLISHER_NOTIFICATION_MODE: ""
+  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_SECRET: ""
+  GOOGLE_SCORE_AUTH: ""
+
+# Temporary setting to keep gcloud from uploading node_modules
+skip_files:
+ - ^node_modules$
