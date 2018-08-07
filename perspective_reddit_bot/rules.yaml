@@ -1,0 +1,47 @@
+# A YAML file that specifies our moderation rules.
+# Each rule must have the following fields.
+#
+# perspective score: A list of models and the thresholds at which to apply the rule.
+#                 If multiple models are listed, then the action only occurs if all thresholds are met
+# action: The moderation action to apply. One of 'report', 'remove', 'spam'.
+#         Due to limitations of our model, we recommend that you only use the report action.
+# report_reason: (optional) The reason for the report to provide to moderators. 
+#
+# Multiple rules can be specified in this file and must be seperated by '---'
+#
+# The list of valid model names is
+# 'TOXICITY',
+# 'SEVERE_TOXICITY',
+# 'TOXICITY_IDENTITY_ATTACK',
+# 'TOXICITY_INSULT',
+# 'TOXICITY_OBSCENE',
+# 'TOXICITY_THREAT',
+# 'TOXICITY_SEXUALLY_EXPLICIT',
+# 'ATTACK_ON_AUTHOR',
+# 'ATTACK_ON_COMMENTER',
+# 'INCOHERENT',
+# 'INFLAMMATORY',
+# 'LIKELY_TO_REJECT',
+# 'OBSCENE',
+# 'SPAM',
+# 'UNSUBSTANTIAL'
+
+perspective_score:
+  SEVERE_TOXICITY: '> 0.9'
+action: report
+report_reason: 'Perspective Bot detected comment with SEVERE_TOXICITY > 0.9'
+
+---
+
+perspective_score:
+  TOXICITY_IDENTITY_ATTACK: '> 0.9'
+action: report
+report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
+
+#---
+#
+#perspective_score:
+#  TOXICITY_SEXUALLY_EXPLICIT: '> 0.9'
+#  TOXICITY_OBSCENE: '< 0.5'
+#action: report
+#report_reason: 'Perspective Bot detected a comment with SEXUALLY_EXPLICIT > 0.9 and OBSCENE < 0.5.'

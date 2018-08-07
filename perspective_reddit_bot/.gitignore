@@ -1,0 +1,14 @@
+# saved credentials
+creds.py
+
+# compiled python
+.pyc
+
+# dotenv environment variables file
+.env
+
+# mac system files
+.DS_Store
+
+# editor specific files
+.vscode
