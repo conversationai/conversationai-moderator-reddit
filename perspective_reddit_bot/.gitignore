@@ -2,10 +2,11 @@
 creds.py
 
 # compiled python
-.pyc
+*.pyc
 
 # dotenv environment variables file
 .env
+.venv
 
 # mac system files
 .DS_Store
