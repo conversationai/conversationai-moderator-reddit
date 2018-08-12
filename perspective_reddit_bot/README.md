@@ -28,7 +28,7 @@ This repository contains a python script for a Reddit bot which uses the Perspec
     ```
 3.  Set up a `creds.py` file with your Reddit and Perspective API credentials. This file can be created by copying creds_template.py and filling in the appropriate fields in the dictionary. You can find more information about obtaining Reddit credentials from the [PRAW documentation](https://praw.readthedocs.io/en/latest/getting_started/authentication.html#script-application) and Perspective API credentials from [http://perspectiveapi.com/](http://perspectiveapi.com/).
 
-4.  Modify the moderation rules in `rules.yaml` as appropriate for your moderation task. The file containes comments with instructions on 
+4.  Modify the moderation rules in `rules.yaml` as appropriate for your moderation task. The file contains comments with instructions on 
 the syntax for these rules and examples of rules that can be adapted.
 
 ## Running the moderation bot

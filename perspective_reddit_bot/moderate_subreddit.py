@@ -20,17 +20,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import argparse
+from datetime import datetime
 import os
 import time
+import pandas as pd
+import praw
+from sets import Set
+import yaml
 
 from creds import creds
-import pandas as pd
 import perspective_client
 from perspective_rule import Rule
-import praw
 import score_dataset
-import yaml
 
 TEXT_COLUMN = 'comment_text'
 
@@ -40,21 +46,25 @@ LANGUAGE = 'en'
 
 def parse_rules(filepath):
   rules = []
-  models = []
+  models = Set()
   with open(filepath) as f:
     raw_rules = yaml.load_all(f)
     for r in raw_rules:
       rules.append(Rule(r['perspective_score'],
                         r['action'],
                         r.get('report_reason')))
-      models.extend(r['perspective_score'].keys())
+      models.update(r['perspective_score'].keys())
   assert len(rules) > 0, 'Rules file empty!'
-  return rules, models
+  return rules, list(models)
 
 
 def bot_is_mod(reddit, subreddit):
-  mods = subreddit.moderator()
-  return reddit.user.me() in mods
+  try:
+    mods = subreddit.moderator()
+    return reddit.user.me() in mods
+  except Exception:
+    return False
+    
 
 
 def score_subreddit(creds_dict,
@@ -78,11 +88,8 @@ def score_subreddit(creds_dict,
                        username=creds_dict['reddit_username'],
                        password=creds_dict['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
+  mod_permissions = bot_is_mod(reddit, subreddit)
 
-  try:
-    mod_permissions = bot_is_mod(reddit, subreddit)
-  except Exception:
-    mod_permissions = False
   if mod_permissions:
     print('Bot is moderator of subreddit.')
     print('Moderation actions will be applied.')
@@ -128,7 +135,7 @@ def score_subreddit(creds_dict,
 
           print('----------')
     except Exception as e:
-      print('Skipping comment due to exception: %s' % str(e))
+      print('Skipping comment due to exception: %s' % e)
 
 
 def _main():
@@ -142,7 +149,8 @@ def _main():
 
   args = parser.parse_args()
   if args.output_dir:
-    output_path = os.path.join(args.output_dir, '%s_%s.json' % (args.subreddit, int(time.time())))
+    output_path = os.path.join(args.output_dir, '%s_%s.json' % (args.subreddit, 
+                                                                datetime.now().strftime('%Y%m%d_%H%M%S')))
   else:
     output_path = None
   rules, models = parse_rules(args.rule_config_file)

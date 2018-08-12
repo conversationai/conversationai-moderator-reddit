@@ -15,6 +15,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 class Rule(object):
   """A class for checking and applying moderation rules.
@@ -32,6 +35,9 @@ class Rule(object):
     self.action_name = action_name
     self.report_reason = report_reason
 
+    # Check there is at least one model rule.
+    assert len(self.model_rules) > 0, 'No model thresholds provided!'
+
   def __str__(self):
     rule_strings = ['%s %s' % (k, v) for k, v in self.model_rules.items()]
     return '\n'.join(rule_strings)
@@ -41,9 +47,6 @@ class Rule(object):
 
     # Currently only checks one comment at a time.
     assert scored_df.shape[0] == 1
-
-    # Check there is at least one model rule.
-    assert len(self.model_rules) > 0, 'No model thresholds provided!'
 
     # Checks that all model conditions hold.
     state = True
