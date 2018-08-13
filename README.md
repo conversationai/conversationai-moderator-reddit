@@ -1,8 +1,8 @@
 # conversationai-moderator-reddit  
 
-## Ensure you have a running OSMOD environment before proceeding
+## Projects
 
-An OSMOD environment is required to be running prior to a Discourse installation.  
+This repository contains two tools that use the [Perspective API](https://www.perspectiveapi.com/) to help with the moderation of Reddit comments:
 
-This Reddit plugin reads from Subreddits noted in osmod/reddit-plugin/src/config/index.ts  
-The cron jobs in osmod/reddit-plugin/cron.yaml pull in the posts and comments, as well as clears the database every 24 hours.  
+1. **reddit_osmod_plugin**: A plugin to use osmod to assist with Reddit moderation.
+2. **perspective_reddit_bot**: A Reddit bot that can stream comments from a subreddit, score them via the [Perspective API](https://www.perspectiveapi.com/), and perform a range of moderation actions based on the score rules.

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd osmod
+cd src
 rm -rf node_modules
 npm install
 
@@ -11,4 +11,4 @@ npm run compile
 
 cd ../../
 
-gcloud app deploy -q --project="osmod-opensource-demo-2" --promote osmod/app.yaml osmod/cron.yaml
+gcloud app deploy -q --project="osmod-opensource-demo-2" --promote src/app.yaml src/cron.yaml
