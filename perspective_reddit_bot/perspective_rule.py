@@ -1,30 +1,33 @@
-"""A class for checking and applying moderation rules.
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-Copyright 2018 Google LLC
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
+"""A class for checking and applying moderation rules."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
 class Rule(object):
   """A class for checking and applying moderation rules.
   Args:
-    model_rules: (list) A list of model rule dictionaries as read from the rules yaml file.
-    action_name: (str) The name of an action to take. Must be one of ['report', 'remove', 'spam']
-    report_reason: (str) (optional) The reason for the report to provide to moderators.
+    model_rules: (list) A list of model rule dictionaries as read from the
+                 rules yaml file.
+    action_name: (str) The name of an action to take. Must be one of
+                 ['report', 'remove', 'spam']
+    report_reason: (str) (optional) The reason for the report to provide to
+                   moderators.
   """
 
   def __init__(self,
@@ -43,7 +46,7 @@ class Rule(object):
     return '\n'.join(rule_strings)
 
   def check_model_rules(self, scored_df):
-    """Checks to see if a scored comment fulfills all of the conditions for this rule."""
+    """Checks if a scored comment fulfills the conditions for this rule."""
 
     # Currently only checks one comment at a time.
     assert scored_df.shape[0] == 1

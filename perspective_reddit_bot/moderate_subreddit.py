@@ -1,23 +1,26 @@
+# Copyright 2018 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+ 
 """A reddit bot which uses the Perpsective API to help moderate subreddits.
 
 Args:
-      subreddit: (required) A positional argument for the name of the subreddit to moderate.
-      -rule_config_file: (optional) The file which contains moderation rules. Defaults to 'rules.yaml'
-      -output_dir: (optional) If set, scores for all streamed commments are written to a file in this directory.
-
-Copyright 2018 Google LLC
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+      subreddit: (required) A positional argument for the name of the subreddit 
+                 to moderate.
+      -rule_config_file: (optional) The file which contains moderation rules. 
+                         Defaults to 'rules.yaml'
+      -output_dir: (optional) If set, scores for all streamed commments are 
+                   written to a file in this directory.
 """
 
 from __future__ import absolute_import
@@ -64,7 +67,6 @@ def bot_is_mod(reddit, subreddit):
     return reddit.user.me() in mods
   except Exception:
     return False
-    
 
 
 def score_subreddit(creds_dict,
@@ -72,14 +74,16 @@ def score_subreddit(creds_dict,
                     rules,
                     models,
                     output_path=None):
-  """Scores a stream of commments via the perspective API and applies pre-defined moderation rules.
+  """Score subreddit commments via Perspective API and apply moderation rules.
 
   Args:
-    creds_dict: (dict) A dictionary of API credentials for Perspective and Reddit.
+    creds_dict: (dict) A dictionary of API credentials for Perspective and 
+                Reddit.
     subreddit_name: (str) The name of the subreddit to stream.
     rules: (list) A list of rules to apply to each comment.
     models: (list) A list of models that the API must call to apply rules.
-    output_path: (str, optional) If supplied, all comments and scores will be written to this path.
+    output_path: (str, optional) If supplied, all comments and scores will be 
+                 written to this path.
   """
 
   reddit = praw.Reddit(client_id=creds_dict['reddit_client_id'],
@@ -116,6 +120,7 @@ def score_subreddit(creds_dict,
       if output_path:
         with open(output_path, 'a') as f:
           scored_df.to_json(f, orient='records', lines=True)
+          f.write('\n')
 
       for rule in rules:
         if rule.check_model_rules(scored_df):
@@ -149,8 +154,10 @@ def _main():
 
   args = parser.parse_args()
   if args.output_dir:
-    output_path = os.path.join(args.output_dir, '%s_%s.json' % (args.subreddit, 
-                                                                datetime.now().strftime('%Y%m%d_%H%M%S')))
+    file_suffix = '%s_%s.json' % (args.subreddit, 
+                                  datetime.now().strftime('%Y%m%d_%H%M%S'))
+    output_path = os.path.join(args.output_dir, file_suffix)
+                               
   else:
     output_path = None
   rules, models = parse_rules(args.rule_config_file)
