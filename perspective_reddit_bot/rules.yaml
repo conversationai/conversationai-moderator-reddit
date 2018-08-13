@@ -12,11 +12,11 @@
 # The list of valid model names is
 # 'TOXICITY',
 # 'SEVERE_TOXICITY',
-# 'TOXICITY_IDENTITY_ATTACK',
-# 'TOXICITY_INSULT',
-# 'TOXICITY_OBSCENE',
-# 'TOXICITY_THREAT',
-# 'TOXICITY_SEXUALLY_EXPLICIT',
+# 'IDENTITY_ATTACK',
+# 'INSULT',
+# 'PROFANITY',
+# 'THREAT',
+# 'SEXUALLY_EXPLICIT',
 # 'ATTACK_ON_AUTHOR',
 # 'ATTACK_ON_COMMENTER',
 # 'INCOHERENT',
@@ -34,14 +34,14 @@ report_reason: 'Perspective Bot detected comment with SEVERE_TOXICITY > 0.9'
 ---
 
 perspective_score:
-  TOXICITY_IDENTITY_ATTACK: '> 0.9'
+  IDENTITY_ATTACK: '> 0.9'
 action: report
 report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
 
 #---
 #
 #perspective_score:
-#  TOXICITY_SEXUALLY_EXPLICIT: '> 0.9'
-#  TOXICITY_OBSCENE: '< 0.5'
+#  SEXUALLY_EXPLICIT: '> 0.9'
+#  PROFANITY: '< 0.5'
 #action: report
-#report_reason: 'Perspective Bot detected a comment with SEXUALLY_EXPLICIT > 0.9 and OBSCENE < 0.5.'
+#report_reason: 'Perspective Bot detected a comment with SEXUALLY_EXPLICIT > 0.9 and PROFANITY < 0.5.'
