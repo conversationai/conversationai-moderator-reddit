@@ -157,7 +157,7 @@ def _main():
     file_suffix = '%s_%s.json' % (args.subreddit, 
                                   datetime.now().strftime('%Y%m%d_%H%M%S'))
     output_path = os.path.join(args.output_dir, file_suffix)
-                               
+
   else:
     output_path = None
   rules, models = parse_rules(args.rule_config_file)

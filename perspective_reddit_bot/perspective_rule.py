@@ -24,8 +24,8 @@ class Rule(object):
   Args:
     model_rules: (list) A list of model rule dictionaries as read from the
                  rules yaml file.
-    action_name: (str) The name of an action to take. Must be one of
-                 ['report', 'remove', 'spam']
+    action_name: (str) The name of an action to take. Currently only 'report'
+                 is supported.
     report_reason: (str) (optional) The reason for the report to provide to
                    moderators.
   """
@@ -72,9 +72,9 @@ class Rule(object):
   def apply_action(self, comment):
     if self.action_name == 'report':
       comment.report(self.report_reason)
-    elif self.action_name == 'remove':
-      comment.mod.remove()
-    elif self.action_name == 'spam':
-      comment.mod.remove(spam=True)
+#    elif self.action_name == 'remove':
+#      comment.mod.remove()
+#    elif self.action_name == 'spam':
+#      comment.mod.remove(spam=True)
     else:
       raise ValueError('Action "%s" not yet implemented.' % self.action_name)
