@@ -24,8 +24,8 @@ class Rule(object):
   Args:
     model_rules: (list) A list of model rule dictionaries as read from the
                  rules yaml file.
-    action_name: (str) The name of an action to take. Must be one of
-                 ['report', 'remove', 'spam']
+    action_name: (str) The name of an action to take. Currently only 'report'
+                 is supported.
     report_reason: (str) (optional) The reason for the report to provide to
                    moderators.
   """
@@ -56,7 +56,7 @@ class Rule(object):
     for model, comparison in self.model_rules.items():
       assert len(comparison.split()) == 2
       comparator, threshold = comparison.split()
-      state = state and self._compare(scored_df['score:%s'%model][0],
+      state = state and self._compare(scored_df['score:%s' % model][0],
                                       comparator,
                                       float(threshold))
     return state
@@ -72,9 +72,10 @@ class Rule(object):
   def apply_action(self, comment):
     if self.action_name == 'report':
       comment.report(self.report_reason)
-    elif self.action_name == 'remove':
-      comment.mod.remove()
-    elif self.action_name == 'spam':
-      comment.mod.remove(spam=True)
+# For the moment we have chosen to only support the 'report' action by default.
+#    elif self.action_name == 'remove':
+#      comment.mod.remove()
+#    elif self.action_name == 'spam':
+#      comment.mod.remove(spam=True)
     else:
       raise ValueError('Action "%s" not yet implemented.' % self.action_name)

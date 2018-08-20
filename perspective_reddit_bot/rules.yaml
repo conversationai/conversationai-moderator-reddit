@@ -3,8 +3,8 @@
 #
 # perspective score: A list of models and the thresholds at which to apply the rule.
 #                 If multiple models are listed, then the action only occurs if all thresholds are met
-# action: The moderation action to apply. One of 'report', 'remove', 'spam'.
-#         Due to limitations of our model, we recommend that you only use the report action.
+# action: The moderation action to apply. Currently only 'report' is supported.
+#
 # report_reason: (optional) The reason for the report to provide to moderators. 
 #
 # Multiple rules can be specified in this file and must be seperated by '---'
