@@ -1,13 +1,23 @@
-# A YAML file that specifies our moderation rules.
-# Each rule must have the following fields.
+# YAML config file for the Perspective Reddit bot.
 #
-# perspective score: A list of models and the thresholds at which to apply the rule.
-#                 If multiple models are listed, then the action only occurs if all thresholds are met
-# action: The moderation action to apply. Currently only 'report' is supported.
+# This config contains "rules" and "ensembles".
 #
-# report_reason: (optional) The reason for the report to provide to moderators. 
 #
-# Multiple rules can be specified in this file and must be seperated by '---'
+# Rules have the following fields:
+#   perspective_score: A list of models and the thresholds at which to apply the
+#                      rule. If multiple models are listed, then the action only
+#                      occurs if all thresholds are met
+#   action: The moderation action to apply. Currently only 'report' is supported.
+#   report_reason: (optional) The reason for the report to provide to moderators.
+#
+#
+# Ensembles have the following fields. The weights are logistic regression
+# coefficients derived from an ensemble training process, which isn't included
+# in this code base.
+#   name: a string. this can be used in rules as a model name.
+#   feature_weights: a list of API model names and weights.
+#   intercept_weight: a bias weight
+
 #
 # The list of valid model names is
 # 'TOXICITY',
@@ -26,22 +36,37 @@
 # 'SPAM',
 # 'UNSUBSTANTIAL'
 
-perspective_score:
-  SEVERE_TOXICITY: '> 0.9'
-action: report
-report_reason: 'Perspective Bot detected comment with SEVERE_TOXICITY > 0.9'
+rules:
+  - perspective_score:
+      SEVERE_TOXICITY: '> 0.9'
+    action: report
+    report_reason: 'Perspective Bot detected comment with SEVERE_TOXICITY > 0.9'
 
----
+  - perspective_score:
+      IDENTITY_ATTACK: '> 0.9'
+    action: report
+    report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
 
-perspective_score:
-  IDENTITY_ATTACK: '> 0.9'
-action: report
-report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
+  - perspective_score:
+      nonprofanity_toxicity: '> 0.8'
+    action: report
+    report_reason: 'Perspective Bot detected a comment with nonprofanity_toxicity > 0.8'
 
-#---
-#
-#perspective_score:
-#  SEXUALLY_EXPLICIT: '> 0.9'
-#  PROFANITY: '< 0.5'
-#action: report
-#report_reason: 'Perspective Bot detected a comment with SEXUALLY_EXPLICIT > 0.9 and PROFANITY < 0.5.'
+  #- perspective_score:
+  #    SEXUALLY_EXPLICIT: '> 0.9'
+  #    PROFANITY: '< 0.5'
+  #  action: report
+  #  report_reason: 'Perspective Bot detected a comment with SEXUALLY_EXPLICIT > 0.9 and PROFANITY < 0.5.'
+
+
+ensembles:
+  # TODO(jetpack): i totally just made this up. would be neat to actually try to make this.
+  - name: 'nonprofanity_toxicity'
+    feature_weights:
+      SEVERE_TOXICITY: 0.5
+      ATTACK_ON_COMMENTER: 0.5
+      IDENTITY_ATTACK: 0.3
+      INSULT: 0.2
+      SEXUALLY_EXPLICIT: 0.2
+      THREAT: 0.1
+    intercept_weight: -0.2
