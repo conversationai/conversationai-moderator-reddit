@@ -56,7 +56,7 @@ class Rule(object):
     for model, comparison in self.model_rules.items():
       assert len(comparison.split()) == 2
       comparator, threshold = comparison.split()
-      state = state and self._compare(scored_df['score:%s'%model][0],
+      state = state and self._compare(scored_df['score:%s' % model][0],
                                       comparator,
                                       float(threshold))
     return state
@@ -72,6 +72,7 @@ class Rule(object):
   def apply_action(self, comment):
     if self.action_name == 'report':
       comment.report(self.report_reason)
+# For the moment we have chosen to only support the 'report' action by default.
 #    elif self.action_name == 'remove':
 #      comment.mod.remove()
 #    elif self.action_name == 'spam':
