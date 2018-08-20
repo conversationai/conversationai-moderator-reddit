@@ -48,9 +48,9 @@ rules:
     report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
 
   - perspective_score:
-      nonprofanity_toxicity: '> 0.8'
+      nonprofanity_toxicity: '> 0.75'
     action: report
-    report_reason: 'Perspective Bot detected a comment with nonprofanity_toxicity > 0.8'
+    report_reason: 'Perspective Bot detected a comment with nonprofanity_toxicity > 0.75'
 
   #- perspective_score:
   #    SEXUALLY_EXPLICIT: '> 0.9'
@@ -63,10 +63,10 @@ ensembles:
   # TODO(jetpack): i totally just made this up. would be neat to actually try to make this.
   - name: 'nonprofanity_toxicity'
     feature_weights:
-      SEVERE_TOXICITY: 0.5
+      SEVERE_TOXICITY: 0.7
       ATTACK_ON_COMMENTER: 0.5
-      IDENTITY_ATTACK: 0.3
-      INSULT: 0.2
+      IDENTITY_ATTACK: 0.4
+      INSULT: 0.3
       SEXUALLY_EXPLICIT: 0.2
       THREAT: 0.1
     intercept_weight: -0.2

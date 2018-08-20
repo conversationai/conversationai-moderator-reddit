@@ -21,8 +21,8 @@ from __future__ import print_function
 import argparse
 from datetime import datetime
 import os
+import json
 import time
-import pandas as pd
 import praw
 from sets import Set
 import yaml
@@ -31,7 +31,6 @@ from creds import creds
 import ensemble
 import perspective_client
 from perspective_rule import Rule
-import score_dataset
 
 TEXT_COLUMN = 'comment_text'
 
@@ -90,7 +89,7 @@ def parse_config(filepath):
   ensemble_names = set(e.name for e in ensembles)
   api_models_for_rules = [m for m in models_for_rules
                           if m not in ensemble_names]
-  api_models |= api_models_for_rules
+  api_models = list(api_models_for_ensembles.union(api_models_for_rules))
   return rules, api_models, ensembles
 
 
@@ -146,22 +145,19 @@ def score_subreddit(creds_dict,
       if len(comment.body) > 20000:
         print('Comment too long, skipping...')
         continue
-      df = pd.DataFrame()
-      df = df.append({TEXT_COLUMN: comment.body}, ignore_index=True)
-      scored_df = score_dataset.score_dataframe(df,
-                                                TEXT_COLUMN,
-                                                api_models,
-                                                perspective,
-                                                language=LANGUAGE)
+      scores = perspective.score_text(comment.body, api_models,
+                                      language=LANGUAGE)
       for e in ensembles:
-        scored_df[e.name] = e.predict_frame(scored_df)
+        scores[e.name] = e.predict_one(scores)
       if output_path:
         with open(output_path, 'a') as f:
-          scored_df.to_json(f, orient='records', lines=True)
+          record = {TEXT_COLUMN: comment.body}
+          record.update(scores)
+          json.dump(record, f)
           f.write('\n')
 
       for rule in rules:
-        if rule.check_model_rules(scored_df):
+        if rule.check_model_rules(scores):
           print('----------')
           print('Comment #%s: ' % i)
           print(comment.body.encode('utf-8'))
@@ -179,7 +175,6 @@ def score_subreddit(creds_dict,
           print('----------')
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
-
 
 
 def _main():
