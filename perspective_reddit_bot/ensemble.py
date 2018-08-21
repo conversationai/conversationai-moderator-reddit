@@ -31,7 +31,6 @@ from sklearn import linear_model
 class LrEnsemble(object):
   """Logistic regression ensemble."""
 
-
   def __init__(self, name, feature_weights, intercept_weight, **lr_kwargs):
     """"Construct a logistic regression ensemble.
 

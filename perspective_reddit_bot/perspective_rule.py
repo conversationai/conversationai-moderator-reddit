@@ -45,18 +45,14 @@ class Rule(object):
     rule_strings = ['%s %s' % (k, v) for k, v in self.model_rules.items()]
     return '\n'.join(rule_strings)
 
-  def check_model_rules(self, scored_df):
+  def check_model_rules(self, model_scores):
     """Checks if a scored comment fulfills the conditions for this rule."""
-
-    # Currently only checks one comment at a time.
-    assert scored_df.shape[0] == 1
-
     # Checks that all model conditions hold.
     state = True
     for model, comparison in self.model_rules.items():
       assert len(comparison.split()) == 2
       comparator, threshold = comparison.split()
-      state = state and self._compare(scored_df['score:%s' % model][0],
+      state = state and self._compare (model_scores[model],
                                       comparator,
                                       float(threshold))
     return state
