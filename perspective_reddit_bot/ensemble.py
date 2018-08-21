@@ -31,13 +31,14 @@ from sklearn import linear_model
 class LrEnsemble(object):
   """Logistic regression ensemble."""
 
+
   def __init__(self, name, feature_weights, intercept_weight, **lr_kwargs):
     """"Construct a logistic regression ensemble.
 
     Args:
      name: (string) name for the model.
      feature_weights: (dict string to float) keys are feature column names,
-       values are weight.s
+       values are weights.
      intercept_weight: (float) intercept/bias term.
      **lr_kwargs: passed to the scikit-learn LogisticRegression constructor.
     """
