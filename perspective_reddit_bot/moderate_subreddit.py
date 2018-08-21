@@ -32,10 +32,8 @@ import ensemble
 import perspective_client
 from perspective_rule import Rule
 
-TEXT_COLUMN = 'comment_text'
-
-LANGUAGE = 'en'
 # TODO(nthain): support automated language detection.
+LANGUAGE = 'en'
 
 # TODO(jetpack): maybe move this to perspective_client?
 AVAILABLE_API_MODELS = set([
@@ -176,7 +174,12 @@ def score_subreddit(creds_dict,
         scores[e.name] = e.predict_one(scores)
       if output_path:
         with open(output_path, 'a') as f:
-          record = {TEXT_COLUMN: comment.body}
+          record = {
+              'comment_text': comment.body,
+              'created_utc': comment.created_utc,
+              'permalink': 'https://reddit.com' + comment.permalink,
+              'author': comment.author.name,
+          }
           record.update(scores)
           json.dump(record, f)
           f.write('\n')
