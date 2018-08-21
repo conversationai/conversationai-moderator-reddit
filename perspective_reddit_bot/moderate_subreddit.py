@@ -37,6 +37,25 @@ TEXT_COLUMN = 'comment_text'
 LANGUAGE = 'en'
 # TODO(nthain): support automated language detection.
 
+# TODO(jetpack): maybe move this to perspective_client?
+AVAILABLE_API_MODELS = set([
+    'TOXICITY',
+    'SEVERE_TOXICITY',
+    'IDENTITY_ATTACK',
+    'INSULT',
+    'PROFANITY',
+    'THREAT',
+    'SEXUALLY_EXPLICIT',
+    'ATTACK_ON_AUTHOR',
+    'ATTACK_ON_COMMENTER',
+    'INCOHERENT',
+    'INFLAMMATORY',
+    'LIKELY_TO_REJECT',
+    'OBSCENE',
+    'SPAM',
+    'UNSUBSTANTIAL',
+])
+
 
 def _has_duplicates(xs):
   return len(xs) != len(set(xs))
@@ -68,10 +87,11 @@ def load_ensembles(ensembles_config):
   if _has_duplicates(ensemble_names):
     raise ValueError('Duplicate ensemble names! {}'.format(ensemble_names))
   ensembles_with_api_model_names = [e for e in ensemble_names
-                                    if e in api_models]
+                                    if e in AVAILABLE_API_MODELS]
   if ensembles_with_api_model_names:
-    raise ValueError('Ensembles cannot shadow API model names! {}'.format(
-        ensembles_with_api_model_names))
+    raise ValueError(
+        'Ensembles cannot have the same name as an API model: {}'.format(
+            ensembles_with_api_model_names))
 
   return ensembles, api_models
 
@@ -89,7 +109,12 @@ def parse_config(filepath):
   ensemble_names = set(e.name for e in ensembles)
   api_models_for_rules = [m for m in models_for_rules
                           if m not in ensemble_names]
-  api_models = list(api_models_for_ensembles.union(api_models_for_rules))
+  api_models = api_models_for_ensembles.union(api_models_for_rules)
+  bad_api_models = api_models - AVAILABLE_API_MODELS
+  if bad_api_models:
+    raise ValueError('requested API models that are not available: {};'
+                     '\nthe set of available API models is: {}'.format(
+                         bad_api_models, AVAILABLE_API_MODELS))
   return rules, api_models, ensembles
 
 
