@@ -37,7 +37,7 @@ class LrEnsemble(object):
     Args:
      name: (string) name for the model.
      feature_weights: (dict string to float) keys are feature column names,
-       values are weight.s
+       values are weights.
      intercept_weight: (float) intercept/bias term.
      **lr_kwargs: passed to the scikit-learn LogisticRegression constructor.
     """

@@ -67,7 +67,10 @@ class Rule(object):
 
   def apply_action(self, comment):
     if self.action_name == 'report':
+      print('reporting...')
       comment.report(self.report_reason)
+    elif self.action_name == 'noop':
+      print('no-op: taking no action')
 # For the moment we have chosen to only support the 'report' action by default.
 #    elif self.action_name == 'remove':
 #      comment.mod.remove()
