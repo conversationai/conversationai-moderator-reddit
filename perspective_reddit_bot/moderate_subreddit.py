@@ -73,6 +73,13 @@ def load_rules(rules_config):
   return rules, models
 
 
+def remove_quotes(text):
+  """Removes lines that begin with '>', indicating a Reddit quote."""
+  lines = text.split('\n')
+  nonquote_lines = [l for l in lines if not l.startswith('>')]
+  return '\n'.join(nonquote_lines)
+
+
 def load_ensembles(ensembles_config):
   ensembles = []
   api_models = set()
@@ -129,6 +136,7 @@ def score_subreddit(creds_dict,
                     rules,
                     api_models,
                     ensembles,
+                    should_remove_quotes,
                     output_path=None):
   """Score subreddit commments via Perspective API and apply moderation rules.
 
@@ -140,6 +148,7 @@ def score_subreddit(creds_dict,
     api_models: (list) A list of models that the API must call to apply rules.
     ensembles: (list) A list of ensemble models based on the API models to
       additionally score each comment with.
+    remove_quotes: (bool) Whether to remove Reddit quotes before scoring.
     output_path: (str, optional) If supplied, all comments and scores will be
                  written to this path.
   """
@@ -165,17 +174,21 @@ def score_subreddit(creds_dict,
     try:
       if i%100 == 0 and i > 0:
         print(i)
-      if len(comment.body) > 20000:
+      original_comment = comment.body
+      comment_for_scoring = (remove_quotes(original_comment)
+                             if should_remove_quotes else original_comment)
+      if len(comment_for_scoring) > 20000:
         print('Comment too long, skipping...')
         continue
-      scores = perspective.score_text(comment.body, api_models,
+      scores = perspective.score_text(comment_for_scoring, api_models,
                                       language=LANGUAGE)
       for e in ensembles:
         scores[e.name] = e.predict_one(scores)
       if output_path:
         with open(output_path, 'a') as f:
           record = {
-              'comment_text': comment.body,
+              'comment_text': original_comment,
+              'scored_comment_text': comment_for_scoring,
               'created_utc': comment.created_utc,
               'permalink': 'https://reddit.com' + comment.permalink,
               'author': comment.author.name,
@@ -211,6 +224,8 @@ def _main():
   parser.add_argument('subreddit', help='subreddit to moderate')
   parser.add_argument('-config_file', help='config file with moderation rules',
                       default='config.yaml')
+  parser.add_argument('-remove_quotes', help='remove quotes when scoring text',
+                      default=True)
   parser.add_argument('-output_dir',
                       help='if set, comment scores are saved to this directory',
                       default=None)
@@ -225,7 +240,7 @@ def _main():
     output_path = None
   rules, api_models, ensembles = parse_config(args.config_file)
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
-                  output_path)
+                  args.remove_quotes, output_path)
 
 if __name__ == '__main__':
   _main()
