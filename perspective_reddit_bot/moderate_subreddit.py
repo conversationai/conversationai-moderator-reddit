@@ -201,6 +201,10 @@ def score_subreddit(creds_dict,
             print('ACTION NOT APPLIED')
 
           print('----------')
+          # TODO(jetpack): would be better to see all rules that trigger, and
+          # report once with messages combined. Currenty, we only report things
+          # once, according to first rule that applies.
+          break
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 
