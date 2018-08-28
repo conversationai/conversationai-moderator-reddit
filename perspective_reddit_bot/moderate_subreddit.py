@@ -77,7 +77,8 @@ def remove_quotes(text):
   """Removes lines that begin with '>', indicating a Reddit quote."""
   lines = text.split('\n')
   nonquote_lines = [l for l in lines if not l.startswith('>')]
-  return '\n'.join(nonquote_lines)
+  text_with_no_quotes = '\n'.join(nonquote_lines).strip()
+  return text_with_no_quotes or text
 
 
 def load_ensembles(ensembles_config):
