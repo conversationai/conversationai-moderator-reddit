@@ -9,7 +9,11 @@
 #                      occurs if all thresholds are met
 #   action: The moderation action to apply. 'report' flags for moderators and
 #           'noop' does nothing.
-#   report_reason: (optional) The reason for the report to provide to moderators.
+#   report_reason: (optional) The reason for the report to provide to
+#                             moderators. If no report reason is given, one
+#                             will be automatically generated from the
+#                             perspective_score field.
+#
 #
 #
 # Ensembles have the following fields. The weights are logistic regression
@@ -41,17 +45,16 @@ rules:
   - perspective_score:
       SEVERE_TOXICITY: '> 0.9'
     action: report
-    report_reason: 'Perspective Bot detected comment with SEVERE_TOXICITY > 0.9'
 
   - perspective_score:
       IDENTITY_ATTACK: '> 0.9'
     action: report
-    report_reason: 'Perspective Bot detected a comment with IDENTITY_ATTACK > 0.9'
+    report_reason: 'Perspective Bot detected IDENTITY_ATTACK > 0.9'
 
   - perspective_score:
       nonprofanity_toxicity: '> 0.75'
     action: report
-    report_reason: 'Perspective Bot detected a comment with nonprofanity_toxicity > 0.75'
+    report_reason: 'Perspective Bot detected nonprofanity_toxicity > 0.75'
 
   #- perspective_score:
   #    SEXUALLY_EXPLICIT: '> 0.9'

@@ -41,13 +41,13 @@ class Rule(object):
     if report_reason:
       self.rule_description = report_reason
     else:
-      self.rule_description = 'Perspective bot detected ' + ' & '.join(self.rule_strings)
+      self.rule_description = 'Perspective Bot detected ' + ' & '.join(self.rule_strings)
 
     # Check there is at least one model rule.
     assert len(self.model_rules) > 0, 'No model thresholds provided!'
 
   def __str__(self):
-    return '\n'.join(self.rule_strings)
+    return self.rule_description
 
   def check_model_rules(self, model_scores):
     """Checks if a scored comment fulfills the conditions for this rule."""

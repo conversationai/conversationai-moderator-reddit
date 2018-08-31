@@ -187,6 +187,7 @@ def score_subreddit(creds_dict,
                        password=creds_dict['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
   original_mod_permissions = bot_is_mod(reddit, subreddit)
+  mod_permissions = original_mod_permissions
 
   if original_mod_permissions:
     print('Bot is moderator of subreddit.')
@@ -200,7 +201,8 @@ def score_subreddit(creds_dict,
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
-      if i % 100 == 0:
+      # TODO(nthain): Make this loop more readable by breaking into functions.
+      if i % 100 == 0 and i > 0:
         print(i)
         # Check if still has mod permissions every 100 comments
         mod_permissions = bot_is_mod(reddit, subreddit)
