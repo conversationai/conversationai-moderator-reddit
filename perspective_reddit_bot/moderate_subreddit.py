@@ -202,6 +202,9 @@ def score_subreddit(creds_dict,
     try:
       if i % 100 == 0 and i > 0:
         print(i)
+        # Check if still has mod permissions every 100 comments
+        mod_permissions = bot_is_mod(reddit, subreddit)
+
       original_comment = comment.body
       comment_for_scoring = (remove_quotes(original_comment)
                              if should_remove_quotes else original_comment)
