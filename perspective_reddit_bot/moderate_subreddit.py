@@ -186,9 +186,9 @@ def score_subreddit(creds_dict,
                        username=creds_dict['reddit_username'],
                        password=creds_dict['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
-  mod_permissions = bot_is_mod(reddit, subreddit)
+  original_mod_permissions = bot_is_mod(reddit, subreddit)
 
-  if mod_permissions:
+  if original_mod_permissions:
     print('Bot is moderator of subreddit.')
     print('Moderation actions will be applied.')
   else:
@@ -200,7 +200,7 @@ def score_subreddit(creds_dict,
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
-      if i % 100 == 0 and i > 0:
+      if i % 100 == 0:
         print(i)
         # Check if still has mod permissions every 100 comments
         mod_permissions = bot_is_mod(reddit, subreddit)
@@ -222,7 +222,7 @@ def score_subreddit(creds_dict,
           action_dict[rule.action_name].append(rule.rule_description)
           print_moderation_decision(i, comment, rule)
 
-      if mod_permissions:
+      if mod_permissions and original_mod_permissions:
         for action, rule_strings in action_dict.items():
           apply_action(action, comment, rule_strings)
 
