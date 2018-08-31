@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+from collections import defaultdict
 from datetime import datetime
 import os
 import json
@@ -132,6 +133,31 @@ def bot_is_mod(reddit, subreddit):
     return False
 
 
+def apply_action(action_name, comment, descriptions):
+  all_reasons = ', '.join(descriptions)
+
+  # Reddit API requires report reasons to be max 100 characters
+  if len(all_reasons) > 100:
+    all_reasons = all_reasons[:97] + '...'
+
+  if action_name == 'report':
+    print('Reporting: %s' % all_reasons)
+    comment.report(all_reasons)
+  elif action_name == 'noop':
+    print('no-op: taking no action')
+  else:
+    raise ValueError('Action "%s" not yet implemented.' % self.action_name)
+
+
+def print_moderation_decision(i, comment, rule):
+  print('----------')
+  print('Comment #%s: ' % i)
+  print(comment.body.encode('utf-8'))
+  print('Rule: %s' % rule)
+  print('Action: %s' % rule.action_name)
+  print('Subreddit: %s' % comment.subreddit)
+
+
 def score_subreddit(creds_dict,
                     subreddit_name,
                     rules,
@@ -169,11 +195,12 @@ def score_subreddit(creds_dict,
     print('Bot is not moderator of subreddit.')
     print('Moderation actions will not be applied.')
 
-  perspective = perspective_client.PerspectiveClient(creds_dict['perspective_api_key'])
+  perspective = perspective_client.PerspectiveClient(
+    creds_dict['perspective_api_key'])
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
-      if i%100 == 0 and i > 0:
+      if i % 100 == 0 and i > 0:
         print(i)
       original_comment = comment.body
       comment_for_scoring = (remove_quotes(original_comment)
@@ -185,36 +212,31 @@ def score_subreddit(creds_dict,
                                       language=LANGUAGE)
       for e in ensembles:
         scores[e.name] = e.predict_one(scores)
+
+      action_dict = defaultdict(list)
+      for rule in rules:
+        if rule.check_model_rules(scores):
+          action_dict[rule.action_name].append(rule.rule_description)
+          print_moderation_decision(i, comment, rule)
+
+      if mod_permissions:
+        for action, rule_strings in action_dict.items():
+          apply_action(action, comment, rule_strings)
+
       if output_path:
         with open(output_path, 'a') as f:
           record = {
+              'comment_id': comment.id,
               'comment_text': original_comment,
               'scored_comment_text': comment_for_scoring,
               'created_utc': comment.created_utc,
               'permalink': 'https://reddit.com' + comment.permalink,
               'author': comment.author.name,
           }
+          record.update(action_dict)
           record.update(scores)
           json.dump(record, f)
           f.write('\n')
-
-      for rule in rules:
-        if rule.check_model_rules(scores):
-          print('----------')
-          print('Comment #%s: ' % i)
-          print(comment.body.encode('utf-8'))
-          print('Rule: %s' % rule)
-          print('Action: %s' % rule.action_name)
-          if subreddit_name in ['all', 'popular']:
-            print('Subreddit: %s' % comment.subreddit)
-
-          if mod_permissions:
-            rule.apply_action(comment)
-            print('ACTION APPLIED')
-          else:
-            print('ACTION NOT APPLIED')
-
-          print('----------')
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 
