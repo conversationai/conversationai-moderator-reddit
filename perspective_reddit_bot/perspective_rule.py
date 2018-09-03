@@ -37,13 +37,17 @@ class Rule(object):
     self.model_rules = model_rules
     self.action_name = action_name
     self.report_reason = report_reason
+    self.rule_strings = ['%s %s' % (k, v) for k, v in model_rules.items()]
+    if report_reason:
+      self.rule_description = report_reason
+    else:
+      self.rule_description = 'Perspective Bot detected ' + ' & '.join(self.rule_strings)
 
     # Check there is at least one model rule.
     assert len(self.model_rules) > 0, 'No model thresholds provided!'
 
   def __str__(self):
-    rule_strings = ['%s %s' % (k, v) for k, v in self.model_rules.items()]
-    return '\n'.join(rule_strings)
+    return self.rule_description
 
   def check_model_rules(self, model_scores):
     """Checks if a scored comment fulfills the conditions for this rule."""
@@ -64,17 +68,3 @@ class Rule(object):
       return score < threshold
     else:
       raise ValueError('Rule must have a ">" or "<".')
-
-  def apply_action(self, comment):
-    if self.action_name == 'report':
-      print('reporting...')
-      comment.report(self.report_reason)
-    elif self.action_name == 'noop':
-      print('no-op: taking no action')
-# For the moment we have chosen to only support the 'report' action by default.
-#    elif self.action_name == 'remove':
-#      comment.mod.remove()
-#    elif self.action_name == 'spam':
-#      comment.mod.remove(spam=True)
-    else:
-      raise ValueError('Action "%s" not yet implemented.' % self.action_name)
