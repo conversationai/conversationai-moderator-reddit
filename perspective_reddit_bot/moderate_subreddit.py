@@ -147,7 +147,7 @@ def apply_action(action_name, comment, descriptions):
   else:
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
-def timestamp_to_datetime(timestamp):
+def timestamp_string(timestamp):
   return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
 
 
@@ -167,12 +167,13 @@ def append_comment_data(output_path,
   with open(output_path, 'a') as f:
     record = {
       'comment_id': comment.id,
-      'comment_text': comment.body,
-      'scored_comment_text': comment_for_scoring,
-      'created_utc': timestamp_to_datetime(comment.created_utc),
+      'orig_comment_text': comment.body,
+      'created_utc': timestamp_string(comment.created_utc),
       'permalink': 'https://reddit.com' + comment.permalink,
       'author': comment.author.name,
-      'bot_review_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
+      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
+    if comment.body != comment_for_scoring:
+      record['scored_comment_text'] = comment_for_scoring
     record.update(action_dict)
     record.update(scores)
     json.dump(record, f)
@@ -246,6 +247,11 @@ def score_subreddit(creds_dict,
     creds_dict['perspective_api_key'])
 
   current_file_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+  output_path = None
+  if output_dir:
+    file_suffix = '%s_%s.json' % (subreddit_name, current_file_time)
+    output_path = os.path.join(output_dir, file_suffix)
+
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
       if i % 100 == 0 and i > 0:
@@ -271,9 +277,7 @@ def score_subreddit(creds_dict,
           apply_action(action, comment, rule_strings)
 
       # Maybe write comment scores to file
-      if output_dir:
-        file_suffix = '%s_%s.json' % (subreddit_name, current_file_time)
-        output_path = os.path.join(output_dir, file_suffix)
+      if output_path:
         append_comment_data(output_path,
                             comment,
                             comment_for_scoring,

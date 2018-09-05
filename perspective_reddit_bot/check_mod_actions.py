@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import praw
 import time
@@ -35,7 +35,9 @@ def write_moderator_actions(reddit,
                             hours_to_wait):
   record = json.loads(line)
   comment = reddit.comment(record[id_key])
-  maybe_wait(record[timestamp_key], hours_to_wait)
+  bot_scored_time = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
+  time_to_check = bot_scored_time + timedelta(hours=hours_to_wait)
+  wait_until(time_to_check)
   record['approved'] = comment.approved
   record['removed'] = comment.removed
   with open(output_path, 'a') as o:
@@ -43,15 +45,11 @@ def write_moderator_actions(reddit,
     o.write('\n')
 
 
-def maybe_wait(timestamp, hours_to_wait):
-  """Waits until hours_to_wait hours have passed since timestamp"""
-
+def wait_until(time_to_proceed):
+  """Waits until the current utc datetime is past time_to_proceed"""
   now = datetime.utcnow()
-  time_diff = now - datetime.strptime(timestamp, '%Y%m%d_%H%M%S')
-  time_diff = time_diff.seconds
-  seconds_to_wait = hours_to_wait * 3600
-  if time_diff < seconds_to_wait:
-    time_to_wait = seconds_to_wait - time_diff
+  if now < time_to_proceed:
+    time_to_wait = (time_to_proceed - now).seconds
     print('Waiting %.1f seconds...' % time_to_wait)
     time.sleep(time_to_wait)
 
@@ -66,7 +64,7 @@ def _main():
                       default='comment_id')
   parser.add_argument('-timestamp_key', help='json key containing timestamp'
                       'that moderation bot saw comment',
-                      default='bot_review_utc')
+                      default='bot_scored_utc')
   parser.add_argument('-hours_to_wait',
                       help='the number of hours to wait to allow moderators to'
                       ' respond to bot',
@@ -97,13 +95,12 @@ def _main():
                                 args.timestamp_key,
                                 args.output_path,
                                 args.hours_to_wait)
+      elif args.stop_at_eof:
+        return
       else:
-        if args.stop_at_eof:
-          return
-        else:
-          print('Reached EOF. Waiting for new data...')
-          time.sleep(args.hours_to_wait * 3600)
-          f.seek(where)
+        print('Reached EOF. Waiting for new data...')
+        time.sleep(args.hours_to_wait * 3600)
+        f.seek(where)
 
 
 if __name__ == '__main__':
