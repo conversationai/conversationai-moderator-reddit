@@ -184,9 +184,9 @@ def score_comment(comment,
                   api_models,
                   ensembles,
                   should_remove_quotes):
-  original_comment = comment.body
-  comment_for_scoring = (remove_quotes(original_comment)
-                          if should_remove_quotes else original_comment)
+  initial_comment = comment.body
+  comment_for_scoring = (remove_quotes(initial_comment)
+                          if should_remove_quotes else initial_comment)
   if len(comment_for_scoring) > 20000:
     print('Comment too long, skipping...')
     return None, None
@@ -233,10 +233,10 @@ def score_subreddit(creds_dict,
                        username=creds_dict['reddit_username'],
                        password=creds_dict['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
-  original_mod_permissions = bot_is_mod(reddit, subreddit)
-  mod_permissions = original_mod_permissions
+  initial_mod_permissions = bot_is_mod(reddit, subreddit)
+  recent_mod_permissions = initial_mod_permissions
 
-  if original_mod_permissions:
+  if initial_mod_permissions:
     print('Bot is moderator of subreddit.')
     print('Moderation actions will be applied.')
   else:
@@ -257,7 +257,7 @@ def score_subreddit(creds_dict,
       if i % 100 == 0 and i > 0:
         print(i)
         # Check if still has mod permissions every 100 comments
-        mod_permissions = bot_is_mod(reddit, subreddit)
+        recent_mod_permissions = bot_is_mod(reddit, subreddit)
 
       # Score current comment with perspective models
       comment_for_scoring, scores = score_comment(comment,
@@ -272,7 +272,7 @@ def score_subreddit(creds_dict,
       action_dict = check_rules(i, comment, rules, scores)
 
       # Apply actions from triggered rules
-      if mod_permissions and original_mod_permissions:
+      if recent_mod_permissions and initial_mod_permissions:
         for action, rule_strings in action_dict.items():
           apply_action(action, comment, rule_strings)
 
