@@ -23,7 +23,6 @@ from collections import defaultdict
 from datetime import datetime
 import os
 import json
-import time
 import praw
 from sets import Set
 import yaml
@@ -148,6 +147,9 @@ def apply_action(action_name, comment, descriptions):
   else:
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
+def timestamp_string(timestamp):
+  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
 
 def print_moderation_decision(i, comment, rule):
   print('----------')
@@ -157,6 +159,51 @@ def print_moderation_decision(i, comment, rule):
   print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
 
+def append_comment_data(output_path,
+                        comment,
+                        comment_for_scoring,
+                        action_dict,
+                        scores):
+  with open(output_path, 'a') as f:
+    record = {
+      'comment_id': comment.id,
+      'orig_comment_text': comment.body,
+      'created_utc': timestamp_string(comment.created_utc),
+      'permalink': 'https://reddit.com' + comment.permalink,
+      'author': comment.author.name,
+      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
+    if comment.body != comment_for_scoring:
+      record['scored_comment_text'] = comment_for_scoring
+    record.update(action_dict)
+    record.update(scores)
+    json.dump(record, f)
+    f.write('\n')
+
+def score_comment(comment,
+                  perspective,
+                  api_models,
+                  ensembles,
+                  should_remove_quotes):
+  initial_comment = comment.body
+  comment_for_scoring = (remove_quotes(initial_comment)
+                          if should_remove_quotes else initial_comment)
+  if len(comment_for_scoring) > 20000:
+    print('Comment too long, skipping...')
+    return None, None
+  scores = perspective.score_text(comment_for_scoring, api_models,
+                                  language=LANGUAGE)
+  for e in ensembles:
+    scores[e.name] = e.predict_one(scores)
+
+  return comment_for_scoring, scores
+
+def check_rules(index, comment, rules, scores):
+  action_dict = defaultdict(list)
+  for rule in rules:
+    if rule.check_model_rules(scores):
+      action_dict[rule.action_name].append(rule.rule_description)
+      print_moderation_decision(index, comment, rule)
+  return action_dict
 
 def score_subreddit(creds_dict,
                     subreddit_name,
@@ -164,7 +211,7 @@ def score_subreddit(creds_dict,
                     api_models,
                     ensembles,
                     should_remove_quotes,
-                    output_path=None):
+                    output_dir=None):
   """Score subreddit commments via Perspective API and apply moderation rules.
 
   Args:
@@ -175,9 +222,9 @@ def score_subreddit(creds_dict,
     api_models: (list) A list of models that the API must call to apply rules.
     ensembles: (list) A list of ensemble models based on the API models to
       additionally score each comment with.
-    remove_quotes: (bool) Whether to remove Reddit quotes before scoring.
-    output_path: (str, optional) If supplied, all comments and scores will be
-                 written to this path.
+    should_remove_quotes: (bool) Whether to remove Reddit quotes before scoring.
+    output_dir: (str, optional) If supplied, all comments and scores will be
+                 written to this directory.
   """
 
   reddit = praw.Reddit(client_id=creds_dict['reddit_client_id'],
@@ -186,10 +233,10 @@ def score_subreddit(creds_dict,
                        username=creds_dict['reddit_username'],
                        password=creds_dict['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
-  original_mod_permissions = bot_is_mod(reddit, subreddit)
-  mod_permissions = original_mod_permissions
+  initial_mod_permissions = bot_is_mod(reddit, subreddit)
+  recent_mod_permissions = initial_mod_permissions
 
-  if original_mod_permissions:
+  if initial_mod_permissions:
     print('Bot is moderator of subreddit.')
     print('Moderation actions will be applied.')
   else:
@@ -199,49 +246,43 @@ def score_subreddit(creds_dict,
   perspective = perspective_client.PerspectiveClient(
     creds_dict['perspective_api_key'])
 
+  current_file_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+  output_path = None
+  if output_dir:
+    file_suffix = '%s_%s.json' % (subreddit_name, current_file_time)
+    output_path = os.path.join(output_dir, file_suffix)
+
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
-      # TODO(nthain): Make this loop more readable by breaking into functions.
       if i % 100 == 0 and i > 0:
         print(i)
         # Check if still has mod permissions every 100 comments
-        mod_permissions = bot_is_mod(reddit, subreddit)
+        recent_mod_permissions = bot_is_mod(reddit, subreddit)
 
-      original_comment = comment.body
-      comment_for_scoring = (remove_quotes(original_comment)
-                             if should_remove_quotes else original_comment)
-      if len(comment_for_scoring) > 20000:
-        print('Comment too long, skipping...')
+      # Score current comment with perspective models
+      comment_for_scoring, scores = score_comment(comment,
+                                                  perspective,
+                                                  api_models,
+                                                  ensembles,
+                                                  should_remove_quotes)
+      if scores is None:
         continue
-      scores = perspective.score_text(comment_for_scoring, api_models,
-                                      language=LANGUAGE)
-      for e in ensembles:
-        scores[e.name] = e.predict_one(scores)
 
-      action_dict = defaultdict(list)
-      for rule in rules:
-        if rule.check_model_rules(scores):
-          action_dict[rule.action_name].append(rule.rule_description)
-          print_moderation_decision(i, comment, rule)
+      # Check which rules should be applied
+      action_dict = check_rules(i, comment, rules, scores)
 
-      if mod_permissions and original_mod_permissions:
+      # Apply actions from triggered rules
+      if recent_mod_permissions and initial_mod_permissions:
         for action, rule_strings in action_dict.items():
           apply_action(action, comment, rule_strings)
 
+      # Maybe write comment scores to file
       if output_path:
-        with open(output_path, 'a') as f:
-          record = {
-              'comment_id': comment.id,
-              'comment_text': original_comment,
-              'scored_comment_text': comment_for_scoring,
-              'created_utc': comment.created_utc,
-              'permalink': 'https://reddit.com' + comment.permalink,
-              'author': comment.author.name,
-          }
-          record.update(action_dict)
-          record.update(scores)
-          json.dump(record, f)
-          f.write('\n')
+        append_comment_data(output_path,
+                            comment,
+                            comment_for_scoring,
+                            action_dict,
+                            scores)
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 
@@ -259,16 +300,10 @@ def _main():
                       default=None)
 
   args = parser.parse_args()
-  if args.output_dir:
-    file_suffix = '%s_%s.json' % (args.subreddit,
-                                  datetime.now().strftime('%Y%m%d_%H%M%S'))
-    output_path = os.path.join(args.output_dir, file_suffix)
 
-  else:
-    output_path = None
   rules, api_models, ensembles = parse_config(args.config_file)
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
-                  args.remove_quotes, output_path)
+                  args.remove_quotes, args.output_dir)
 
 if __name__ == '__main__':
   _main()
