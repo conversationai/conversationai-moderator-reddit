@@ -43,6 +43,7 @@ def write_moderator_actions(reddit,
   else:
     record['approved'] = None
     record['removed'] = None
+  record['action_checked_utc'] = datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
   with open(output_path, 'a') as o:
     json.dump(record, o)
     o.write('\n')
