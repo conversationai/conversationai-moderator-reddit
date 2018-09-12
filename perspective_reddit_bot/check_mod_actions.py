@@ -37,10 +37,12 @@ def write_moderator_actions(reddit,
   bot_scored_time = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
   time_to_check = bot_scored_time + timedelta(hours=hours_to_wait)
   wait_until(time_to_check)
-  comment_id = record[id_key]
-  print(comment_id)
-  record['approved'], record['removed'] = check_approved_removed(reddit,
-                                                                 comment_id)
+  approved_removed = check_approved_removed(reddit, record[id_key])
+  if approved_removed:
+    record['approved'], record['removed'] = approved_removed
+  else:
+    record['approved'] = None
+    record['removed'] = None
   with open(output_path, 'a') as o:
     json.dump(record, o)
     o.write('\n')
@@ -52,7 +54,7 @@ def check_approved_removed(reddit, comment_id):
     return comment.approved, comment.removed
   except Exception as e:
     print('Skipping comment due to exception: %s' % e)
-    return None, None
+    return None
 
 
 def wait_until(time_to_proceed):
