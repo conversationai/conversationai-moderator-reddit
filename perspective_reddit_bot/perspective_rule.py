@@ -32,9 +32,11 @@ class Rule(object):
 
   def __init__(self,
                model_rules,
+               comment_feature_rules,
                action_name,
                report_reason=None):
     self.model_rules = model_rules
+    self.comment_feature_rules = comment_feature_rules
     self.action_name = action_name
     self.report_reason = report_reason
     self.rule_strings = ['%s %s' % (k, v) for k, v in model_rules.items()]
@@ -49,16 +51,20 @@ class Rule(object):
   def __str__(self):
     return self.rule_description
 
-  def check_model_rules(self, model_scores):
+  def check_model_rules(self, model_scores, comment):
     """Checks if a scored comment fulfills the conditions for this rule."""
     # Checks that all model conditions hold.
     state = True
-    for model, comparison in self.model_rules.items():
+    for model, comparison in self.model_rules.iteritems():
       assert len(comparison.split()) == 2
       comparator, threshold = comparison.split()
       state = state and self._compare (model_scores[model],
                                       comparator,
                                       float(threshold))
+    for feature, feature_value in self.comment_feature_rules.iteritems():
+      if feature == 'toplevel_only' and feature_value:
+        is_toplevel_comment = comment.link_id == comment.parent_id
+        state = state and is_toplevel_comment
     return state
 
   def _compare(self, score, comparator, threshold):

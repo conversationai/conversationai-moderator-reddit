@@ -66,6 +66,7 @@ def load_rules(rules_config):
   models = set()
   for r in rules_config:
     rules.append(Rule(r['perspective_score'],
+                      r.get('comment_features', {}),
                       r['action'],
                       r.get('report_reason')))
     models.update(r['perspective_score'].keys())
@@ -167,6 +168,8 @@ def append_comment_data(output_path,
   with open(output_path, 'a') as f:
     record = {
       'comment_id': comment.id,
+      'link_id': comment.link_id,  # id of the post
+      'parent_id': comment.parent_id,
       'orig_comment_text': comment.body,
       'created_utc': timestamp_string(comment.created_utc),
       'permalink': 'https://reddit.com' + comment.permalink,
@@ -200,7 +203,7 @@ def score_comment(comment,
 def check_rules(index, comment, rules, scores):
   action_dict = defaultdict(list)
   for rule in rules:
-    if rule.check_model_rules(scores):
+    if rule.check_model_rules(scores, comment):
       action_dict[rule.action_name].append(rule.rule_description)
       print_moderation_decision(index, comment, rule)
   return action_dict
