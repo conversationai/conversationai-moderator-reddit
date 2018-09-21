@@ -7,7 +7,7 @@
 #   perspective_score: A list of models and the thresholds at which to apply the
 #                      rule. If multiple models are listed, then the action only
 #                      occurs if all thresholds are met
-#   comment_features: A list of features and values. The features are:
+#   comment_features: (optional) A list of features and values. The features:
 #       toplevel_only: boolean feature. If true, rule only applies to top-level
 #                      comments (comments directly responding to the original
 #                      post).
@@ -54,6 +54,13 @@ rules:
       IDENTITY_ATTACK: '> 0.9'
     action: report
     report_reason: 'Perspective Bot detected IDENTITY_ATTACK > 0.9'
+
+  - perspective_score:
+      UNSUBSTANTIAL: '> 0.85'
+    comment_features:
+      toplevel_only: true
+    action: report
+    report_reason: 'Perspective Bot UNSUBSTANTIAL > 0.85 for top-level comment'
 
   - perspective_score:
       nonprofanity_toxicity: '> 0.75'
