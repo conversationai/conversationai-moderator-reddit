@@ -7,6 +7,10 @@
 #   perspective_score: A list of models and the thresholds at which to apply the
 #                      rule. If multiple models are listed, then the action only
 #                      occurs if all thresholds are met
+#   comment_features: A list of features and values. The features are:
+#       toplevel_only: boolean feature. If true, rule only applies to top-level
+#                      comments (comments directly responding to the original
+#                      post).
 #   action: The moderation action to apply. 'report' flags for moderators and
 #           'noop' does nothing.
 #   report_reason: (optional) The reason for the report to provide to

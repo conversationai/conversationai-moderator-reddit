@@ -64,6 +64,8 @@ def load_rules(rules_config):
   rules = []
   # Note: models mentioned in rules may contain the names of ensemble models.
   models = set()
+  # TODO(jetpack): add more validation for comment_features: check that all
+  # features are supported and have the right type.
   for r in rules_config:
     rules.append(Rule(r['perspective_score'],
                       r.get('comment_features', {}),
