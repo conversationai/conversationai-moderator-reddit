@@ -148,14 +148,20 @@ def apply_action(action_name, comment, descriptions):
   else:
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
+
 def timestamp_string(timestamp):
   return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
+
+def comment_url(comment):
+  return 'https://reddit.com' + comment.permalink
 
 
 def print_moderation_decision(i, comment, rule):
   print('----------')
   print('Comment #%s: ' % i)
   print(comment.body.encode('utf-8'))
+  print('URL: ', comment_url(comment))
   print('Rule: %s' % rule)
   print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
@@ -172,7 +178,7 @@ def append_comment_data(output_path,
       'parent_id': comment.parent_id,
       'orig_comment_text': comment.body,
       'created_utc': timestamp_string(comment.created_utc),
-      'permalink': 'https://reddit.com' + comment.permalink,
+      'permalink': comment_url(comment),
       'author': comment.author.name,
       'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
     if comment.body != comment_for_scoring:
