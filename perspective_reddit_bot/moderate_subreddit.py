@@ -64,8 +64,11 @@ def load_rules(rules_config):
   rules = []
   # Note: models mentioned in rules may contain the names of ensemble models.
   models = set()
+  # TODO(jetpack): add more validation for comment_features: check that all
+  # features are supported and have the right type.
   for r in rules_config:
     rules.append(Rule(r['perspective_score'],
+                      r.get('comment_features', {}),
                       r['action'],
                       r.get('report_reason')))
     models.update(r['perspective_score'].keys())
@@ -147,14 +150,20 @@ def apply_action(action_name, comment, descriptions):
   else:
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
+
 def timestamp_string(timestamp):
   return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
+
+def comment_url(comment):
+  return 'https://reddit.com' + comment.permalink
 
 
 def print_moderation_decision(i, comment, rule):
   print('----------')
   print('Comment #%s: ' % i)
   print(comment.body.encode('utf-8'))
+  print('URL: ', comment_url(comment))
   print('Rule: %s' % rule)
   print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
@@ -167,9 +176,11 @@ def append_comment_data(output_path,
   with open(output_path, 'a') as f:
     record = {
       'comment_id': comment.id,
+      'link_id': comment.link_id,  # id of the post
+      'parent_id': comment.parent_id,
       'orig_comment_text': comment.body,
       'created_utc': timestamp_string(comment.created_utc),
-      'permalink': 'https://reddit.com' + comment.permalink,
+      'permalink': comment_url(comment),
       'author': comment.author.name,
       'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
     if comment.body != comment_for_scoring:
@@ -200,7 +211,7 @@ def score_comment(comment,
 def check_rules(index, comment, rules, scores):
   action_dict = defaultdict(list)
   for rule in rules:
-    if rule.check_model_rules(scores):
+    if rule.check_model_rules(scores, comment):
       action_dict[rule.action_name].append(rule.rule_description)
       print_moderation_decision(index, comment, rule)
   return action_dict
