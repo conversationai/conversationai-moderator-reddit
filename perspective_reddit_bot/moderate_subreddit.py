@@ -86,13 +86,8 @@ def print_actions(i, comment, action_dict):
       print('  %s: %s: %s' % (action, rule.name, rule.rule_description))
 
 
-def append_comment_data(output_path,
-                        comment,
-                        comment_for_scoring,
-                        action_dict,
-                        scores):
-  with open(output_path, 'a') as f:
-    record = {
+def create_output_record(comment, comment_for_scoring, action_dict, scores):
+  record = {
       'comment_id': comment.id,
       'link_id': comment.link_id,  # id of the post
       'parent_id': comment.parent_id,
@@ -101,15 +96,21 @@ def append_comment_data(output_path,
       'orig_comment_text': comment.body,
       'author': comment.author.name,
       'created_utc': timestamp_string(comment.created_utc),
-      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
-    if comment.body != comment_for_scoring:
-      record['scored_comment_text'] = comment_for_scoring
-    actions_to_rule_descriptions = {
-        action: [r.rule_description for r in rules]
-        for action, rules in action_dict.iteritems()
-    }
-    record.update(actions_to_rule_descriptions)
-    record.update(scores)
+      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),
+  }
+  if comment.body != comment_for_scoring:
+    record['scored_comment_text'] = comment_for_scoring
+  actions_to_rule_descriptions = {
+      action: [r.rule_description for r in rules]
+      for action, rules in action_dict.iteritems()
+  }
+  record.update(actions_to_rule_descriptions)
+  record.update(scores)
+  return record
+
+
+def append_record(output_path, record):
+  with open(output_path, 'a') as f:
     json.dump(record, f)
     f.write('\n')
 
@@ -217,11 +218,9 @@ def score_subreddit(creds_dict,
 
       # Maybe write comment scores to file
       if output_path:
-        append_comment_data(output_path,
-                            comment,
-                            comment_for_scoring,
-                            action_dict,
-                            scores)
+        append_record(output_path,
+                      create_output_record(
+                          comment, comment_for_scoring, action_dict, scores))
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 

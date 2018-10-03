@@ -20,9 +20,25 @@ from __future__ import print_function
 
 import unittest
 
-from moderate_subreddit import remove_quotes, check_rules
+from moderate_subreddit import remove_quotes, check_rules, create_output_record
 from perspective_rule import Rule
 
+
+class MockAuthor(object):
+  def __init__(self, name):
+    self.name = name
+
+
+class MockComment(object):
+  def __init__(self, comment_text):
+    self.id = 'cid'
+    self.parent_id = 'pid'
+    self.link_id = 'lid'
+    self.subreddit = 'SubReddit'
+    self.permalink = 'r/SubReddit/blahblah'
+    self.body = comment_text
+    self.author = MockAuthor('username')
+    self.created_utc = 123
 
 
 class ModerateSubredditTest(unittest.TestCase):
@@ -80,6 +96,21 @@ gross'''
                      [r.name for r in actions['report']])
     self.assertEqual(['med_threat'],
                      [r.name for r in actions['noop']])
+
+
+  def test_create_output_record(self):
+    comment = MockComment('hello')
+    action_dict = {
+        'report': [ Rule('hi_tox', {'TOXICITY': '> 0.5'}, {}, 'report') ],
+    }
+    scores = { 'TOXICITY': 0.8 }
+    record = create_output_record(comment, 'hello', action_dict, scores)
+    self.assertEqual('hello', record['orig_comment_text'])
+    # This field is only present when different from the comment body.
+    self.assertFalse('scored_comment_text' in record)
+    self.assertEqual(0.8, record['TOXICITY'])
+    self.assertEqual(['Perspective Bot rule triggered: hi_tox: TOXICITY > 0.5'],
+                     record['report'])
 
 
 if __name__ == '__main__':
