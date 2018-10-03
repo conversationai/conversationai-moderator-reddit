@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+from collections import Counter
 from collections import defaultdict
 from datetime import datetime
 import os
@@ -55,6 +56,11 @@ AVAILABLE_API_MODELS = set([
 ])
 
 
+def _duplicate_items(xs):
+  return [x for (x, count) in Counter(items).iteritems()
+          if count > 1]
+
+
 def _has_duplicates(xs):
   return len(xs) != len(set(xs))
 
@@ -67,21 +73,18 @@ def load_rules(rules_config):
   # TODO(jetpack): add more validation for comment_features: check that all
   # features are supported and have the right type.
   for r in rules_config:
-    rules.append(Rule(r['perspective_score'],
+    rules.append(Rule(r.get('name'),
+                      r['perspective_score'],
                       r.get('comment_features', {}),
                       r['action'],
                       r.get('report_reason')))
     models.update(r['perspective_score'].keys())
   assert len(rules) > 0, 'Rules file empty!'
+  rule_names = [r.name for r in rules]
+  if _has_duplicates(rule_names):
+    raise ValueError('Duplicate rule names: {}'.format(
+        _duplicate_items(rule_names)))
   return rules, models
-
-
-def remove_quotes(text):
-  """Removes lines that begin with '>', indicating a Reddit quote."""
-  lines = text.split('\n')
-  nonquote_lines = [l for l in lines if not l.startswith('>')]
-  text_with_no_quotes = '\n'.join(nonquote_lines).strip()
-  return text_with_no_quotes or text
 
 
 def load_ensembles(ensembles_config):
@@ -125,6 +128,14 @@ def parse_config(filepath):
                      '\nthe set of available API models is: {}'.format(
                          bad_api_models, AVAILABLE_API_MODELS))
   return rules, api_models, ensembles
+
+
+def remove_quotes(text):
+  """Removes lines that begin with '>', indicating a Reddit quote."""
+  lines = text.split('\n')
+  nonquote_lines = [l for l in lines if not l.startswith('>')]
+  text_with_no_quotes = '\n'.join(nonquote_lines).strip()
+  return text_with_no_quotes or text
 
 
 def bot_is_mod(reddit, subreddit):
