@@ -34,6 +34,8 @@ import config
 # TODO(nthain): support automated language detection.
 LANGUAGE = 'en'
 
+MODEL_SCORE_OUTPUT_PREFIX = 'score:'
+
 
 def timestamp_string(timestamp):
   return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
@@ -105,7 +107,8 @@ def create_output_record(comment, comment_for_scoring, action_dict, scores):
       for action, rules in action_dict.iteritems()
   }
   record.update(actions_to_rule_descriptions)
-  record.update(scores)
+  record.update({MODEL_SCORE_OUTPUT_PREFIX + model: score
+                 for model, score in scores.iteritems()})
   return record
 
 

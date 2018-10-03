@@ -108,7 +108,7 @@ gross'''
     self.assertEqual('hello', record['orig_comment_text'])
     # This field is only present when different from the comment body.
     self.assertFalse('scored_comment_text' in record)
-    self.assertEqual(0.8, record['TOXICITY'])
+    self.assertEqual(0.8, record['score:TOXICITY'])
     self.assertEqual(['Perspective Bot rule triggered: hi_tox: TOXICITY > 0.5'],
                      record['report'])
 
