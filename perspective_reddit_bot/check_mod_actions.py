@@ -81,7 +81,7 @@ def _main():
   parser.add_argument('-hours_to_wait',
                       help='the number of hours to wait to allow moderators to'
                       ' respond to bot',
-                      type=int,
+                      type=float,
                       default=12)
   parser.add_argument('-stop_at_eof',
                       help='if set, stops the process once the end of file is '
