@@ -30,6 +30,7 @@ import perspective_client
 
 import config
 
+
 # TODO(nthain): support automated language detection.
 LANGUAGE = 'en'
 
@@ -83,6 +84,7 @@ def print_moderation_decision(i, comment, rule):
   print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
 
+
 def append_comment_data(output_path,
                         comment,
                         comment_for_scoring,
@@ -106,6 +108,7 @@ def append_comment_data(output_path,
     json.dump(record, f)
     f.write('\n')
 
+
 def score_comment(comment,
                   perspective,
                   api_models,
@@ -124,6 +127,7 @@ def score_comment(comment,
 
   return comment_for_scoring, scores
 
+
 def check_rules(index, comment, rules, scores):
   action_dict = defaultdict(list)
   for rule in rules:
@@ -131,6 +135,7 @@ def check_rules(index, comment, rules, scores):
       action_dict[rule.action_name].append(rule.rule_description)
       print_moderation_decision(index, comment, rule)
   return action_dict
+
 
 def score_subreddit(creds_dict,
                     subreddit_name,
@@ -231,6 +236,7 @@ def _main():
   rules, api_models, ensembles = config.parse_config(args.config_file)
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
                   args.remove_quotes, args.output_dir)
+
 
 if __name__ == '__main__':
   _main()
