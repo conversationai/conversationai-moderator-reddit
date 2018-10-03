@@ -35,6 +35,14 @@ import config
 LANGUAGE = 'en'
 
 
+def timestamp_string(timestamp):
+  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
+
+def comment_url(comment):
+  return 'https://reddit.com' + comment.permalink
+
+
 def remove_quotes(text):
   """Removes lines that begin with '>', indicating a Reddit quote."""
   lines = text.split('\n')
@@ -53,7 +61,6 @@ def bot_is_mod(reddit, subreddit):
 
 def apply_action(action_name, comment, descriptions):
   all_reasons = ', '.join(descriptions)
-
   # Reddit API requires report reasons to be max 100 characters
   if len(all_reasons) > 100:
     all_reasons = all_reasons[:97] + '...'
@@ -67,22 +74,16 @@ def apply_action(action_name, comment, descriptions):
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
 
-def timestamp_string(timestamp):
-  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-
-
-def comment_url(comment):
-  return 'https://reddit.com' + comment.permalink
-
-
-def print_moderation_decision(i, comment, rule):
+def print_actions(i, comment, action_dict):
   print('----------')
   print('Comment #%s: ' % i)
   print(comment.body.encode('utf-8'))
   print('URL: ', comment_url(comment))
-  print('Rule: %s' % rule)
-  print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
+  print('Actions:')
+  for action, rules in action_dict.iteritems():
+    for rule in rules:
+      print('  %s: %s: %s' % (action, rule.name, rule.rule_description))
 
 
 def append_comment_data(output_path,
@@ -103,7 +104,11 @@ def append_comment_data(output_path,
       'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
     if comment.body != comment_for_scoring:
       record['scored_comment_text'] = comment_for_scoring
-    record.update(action_dict)
+    actions_to_rule_descriptions = {
+        action: [r.rule_description for r in rules]
+        for action, rules in action_dict.iteritems()
+    }
+    record.update(actions_to_rule_descriptions)
     record.update(scores)
     json.dump(record, f)
     f.write('\n')
@@ -128,12 +133,12 @@ def score_comment(comment,
   return comment_for_scoring, scores
 
 
-def check_rules(index, comment, rules, scores):
+def check_rules(comment, rules, scores):
+  """Returns mapping from actions to triggered rules."""
   action_dict = defaultdict(list)
   for rule in rules:
     if rule.check_model_rules(scores, comment):
-      action_dict[rule.action_name].append(rule.rule_description)
-      print_moderation_decision(index, comment, rule)
+      action_dict[rule.action_name].append(rule)
   return action_dict
 
 
@@ -201,12 +206,14 @@ def score_subreddit(creds_dict,
         continue
 
       # Check which rules should be applied
-      action_dict = check_rules(i, comment, rules, scores)
+      action_dict = check_rules(comment, rules, scores)
+      if action_dict:
+        print_actions(i, comment, action_dict)
 
       # Apply actions from triggered rules
       if recent_mod_permissions and initial_mod_permissions:
-        for action, rule_strings in action_dict.items():
-          apply_action(action, comment, rule_strings)
+        for action, rules in action_dict.iteritems():
+          apply_action(action, comment, (r.rule_description for r in rules))
 
       # Maybe write comment scores to file
       if output_path:
