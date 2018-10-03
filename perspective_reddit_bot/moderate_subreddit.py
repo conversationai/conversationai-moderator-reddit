@@ -178,10 +178,11 @@ def append_comment_data(output_path,
       'comment_id': comment.id,
       'link_id': comment.link_id,  # id of the post
       'parent_id': comment.parent_id,
-      'orig_comment_text': comment.body,
-      'created_utc': timestamp_string(comment.created_utc),
+      'subreddit': comment.subreddit,
       'permalink': comment_url(comment),
+      'orig_comment_text': comment.body,
       'author': comment.author.name,
+      'created_utc': timestamp_string(comment.created_utc),
       'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
     if comment.body != comment_for_scoring:
       record['scored_comment_text'] = comment_for_scoring
