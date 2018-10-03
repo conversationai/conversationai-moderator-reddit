@@ -189,7 +189,7 @@ def append_comment_data(output_path,
       'comment_id': comment.id,
       'link_id': comment.link_id,  # id of the post
       'parent_id': comment.parent_id,
-      'subreddit': comment.subreddit,
+      'subreddit': str(comment.subreddit),
       'permalink': comment_url(comment),
       'orig_comment_text': comment.body,
       'author': comment.author.name,
