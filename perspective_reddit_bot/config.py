@@ -46,7 +46,7 @@ AVAILABLE_API_MODELS = set([
 
 
 def _duplicate_items(xs):
-  return [x for (x, count) in Counter(items).iteritems()
+  return [x for (x, count) in Counter(xs).iteritems()
           if count > 1]
 
 
@@ -54,7 +54,7 @@ def _has_duplicates(xs):
   return len(xs) != len(set(xs))
 
 
-def load_rules(rules_config):
+def _load_rules(rules_config):
   rules = []
   # Note: models mentioned in rules may contain the names of ensemble models.
   models = set()
@@ -67,7 +67,8 @@ def load_rules(rules_config):
                       r['action'],
                       r.get('report_reason')))
     models.update(r['perspective_score'].keys())
-  assert len(rules) > 0, 'Rules file empty!'
+  if not rules:
+    raise ValueError('No rules!')
   rule_names = [r.name for r in rules]
   if _has_duplicates(rule_names):
     raise ValueError('Duplicate rule names: {}'.format(
@@ -75,7 +76,7 @@ def load_rules(rules_config):
   return rules, models
 
 
-def load_ensembles(ensembles_config):
+def _load_ensembles(ensembles_config):
   ensembles = []
   api_models = set()
   for e in ensembles_config:
@@ -96,15 +97,12 @@ def load_ensembles(ensembles_config):
   return ensembles, api_models
 
 
-def parse_config(filepath):
-  with open(filepath) as f:
-    config = yaml.load(f)
-
+def _load_config(config):
   ensembles, api_models_for_ensembles = [], set()
   if 'ensembles' in config:
-    ensembles, api_models_for_ensembles = load_ensembles(config['ensembles'])
+    ensembles, api_models_for_ensembles = _load_ensembles(config['ensembles'])
 
-  rules, models_for_rules = load_rules(config['rules'])
+  rules, models_for_rules = _load_rules(config['rules'])
 
   ensemble_names = set(e.name for e in ensembles)
   api_models_for_rules = [m for m in models_for_rules
@@ -114,5 +112,11 @@ def parse_config(filepath):
   if bad_api_models:
     raise ValueError('requested API models that are not available: {};'
                      '\nthe set of available API models is: {}'.format(
-                         bad_api_models, AVAILABLE_API_MODELS))
+                         ', '.join(bad_api_models), AVAILABLE_API_MODELS))
   return rules, api_models, ensembles
+
+
+def parse_config(filepath):
+  with open(filepath) as f:
+    config = yaml.load(f)
+  return _load_config(config)

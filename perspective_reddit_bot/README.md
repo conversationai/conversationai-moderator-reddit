@@ -23,7 +23,7 @@ moderation permissions on the subreddit being moderated.
    To enter your virtual env:
 
    ```shell
-   source env/bin/activate
+   source .venv/bin/activate
    ```
 
 2. Install library dependencies:
@@ -42,6 +42,15 @@ moderation permissions on the subreddit being moderated.
 4. Modify the moderation rules in `rules.yaml` as appropriate for your
    moderation task. The file contains comments with instructions on the syntax
    for these rules and examples of rules that can be adapted.
+
+## Running tests
+
+TODO: use a standard test runner thing?
+
+```shell
+source .venv/bin/activate
+python -m unittest discover -s . -p '*_test.py'
+```
 
 ## Running the moderation bot
 
