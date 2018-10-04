@@ -97,20 +97,35 @@ gross'''
     self.assertEqual(['med_threat'],
                      [r.name for r in actions['noop']])
 
+  # TODO: These tests are a little complex, mirroring the complexity of the
+  # these functions (create_output_record, check_rules). Perhaps these can be
+  # refactored to simplify the control/data flow.
 
-  def test_create_output_record(self):
+  def test_create_output_record_basic(self):
     comment = MockComment('hello')
-    action_dict = {
-        'report': [ Rule('hi_tox', {'TOXICITY': '> 0.5'}, {}, 'report') ],
-    }
     scores = { 'TOXICITY': 0.8 }
-    record = create_output_record(comment, 'hello', action_dict, scores)
+    hi_tox_rule = Rule('hi_tox', {'TOXICITY': '> 0.5'}, {}, 'report')
+    rules = [ hi_tox_rule ]
+    action_dict = check_rules(comment, rules, scores)
+    record = create_output_record(comment, 'hello', scores, action_dict, rules)
     self.assertEqual('hello', record['orig_comment_text'])
     # This field is only present when different from the comment body.
     self.assertFalse('scored_comment_text' in record)
     self.assertEqual(0.8, record['score:TOXICITY'])
-    self.assertEqual(['Perspective Bot rule triggered: hi_tox: TOXICITY > 0.5'],
-                     record['report'])
+    self.assertEqual('report', record['rule:hi_tox'])
+
+  def test_create_output_record_more_rules(self):
+    comment = MockComment('hello')
+    scores = { 'TOXICITY': 0.8 }
+    hi_tox_rule = Rule('hi_tox', {'TOXICITY': '> 0.9'}, {}, 'report')
+    med_tox_rule = Rule('med_tox', {'TOXICITY': '> 0.5'}, {}, 'report')
+    lo_tox_rule = Rule('lo_tox', {'TOXICITY': '> 0.1'}, {}, 'noop')
+    rules = [ hi_tox_rule, med_tox_rule, lo_tox_rule ]
+    action_dict = check_rules(comment, rules, scores)
+    record = create_output_record(comment, 'hello', scores, action_dict, rules)
+    self.assertEqual('rule-not-triggered', record['rule:hi_tox'])
+    self.assertEqual('report', record['rule:med_tox'])
+    self.assertEqual('noop', record['rule:lo_tox'])
 
 
 if __name__ == '__main__':
