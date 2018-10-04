@@ -57,7 +57,7 @@ def process_modactions_frame(df):
 
 def print_basic_info(df):
   print('number of examples:', len(df))
-  print('removed examples: {} ({.1f}%)'.format(
+  print('removed examples: {} ({:.1f}%)'.format(
       df['removed'].sum(), 100 * df['removed'].sum() / len(df)))
 
 
@@ -82,10 +82,11 @@ def _main():
   args = parser.parse_args()
 
   raw_df = pd.read_json(args.actions_path, lines=True)
-  cleaned_df = prep_modactions_frame(raw_df)
+  cleaned_df = process_modactions_frame(raw_df)
 
   print_basic_info(cleaned_df)
-  print(compute_rule_metrics(df))
+  pd.options.display.float_format = '{:.3f}'.format
+  print(compute_rule_metrics(cleaned_df))
 
 
 if __name__ == '__main__':
