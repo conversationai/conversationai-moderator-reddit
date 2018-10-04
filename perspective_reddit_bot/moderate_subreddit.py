@@ -19,115 +19,19 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
-from collections import Counter
 from collections import defaultdict
 from datetime import datetime
 import os
 import json
 import praw
-from sets import Set
-import yaml
 
 from creds import creds
-import ensemble
 import perspective_client
-from perspective_rule import Rule
+
+import config
 
 # TODO(nthain): support automated language detection.
 LANGUAGE = 'en'
-
-# TODO(jetpack): maybe move this to perspective_client?
-AVAILABLE_API_MODELS = set([
-    'TOXICITY',
-    'SEVERE_TOXICITY',
-    'IDENTITY_ATTACK',
-    'INSULT',
-    'PROFANITY',
-    'THREAT',
-    'SEXUALLY_EXPLICIT',
-    'ATTACK_ON_AUTHOR',
-    'ATTACK_ON_COMMENTER',
-    'INCOHERENT',
-    'INFLAMMATORY',
-    'LIKELY_TO_REJECT',
-    'OBSCENE',
-    'SPAM',
-    'UNSUBSTANTIAL',
-])
-
-
-def _duplicate_items(xs):
-  return [x for (x, count) in Counter(items).iteritems()
-          if count > 1]
-
-
-def _has_duplicates(xs):
-  return len(xs) != len(set(xs))
-
-
-# TODO(jetpack): move this logic to config.py module.
-def load_rules(rules_config):
-  rules = []
-  # Note: models mentioned in rules may contain the names of ensemble models.
-  models = set()
-  # TODO(jetpack): add more validation for comment_features: check that all
-  # features are supported and have the right type.
-  for r in rules_config:
-    rules.append(Rule(r.get('name'),
-                      r['perspective_score'],
-                      r.get('comment_features', {}),
-                      r['action'],
-                      r.get('report_reason')))
-    models.update(r['perspective_score'].keys())
-  assert len(rules) > 0, 'Rules file empty!'
-  rule_names = [r.name for r in rules]
-  if _has_duplicates(rule_names):
-    raise ValueError('Duplicate rule names: {}'.format(
-        _duplicate_items(rule_names)))
-  return rules, models
-
-
-def load_ensembles(ensembles_config):
-  ensembles = []
-  api_models = set()
-  for e in ensembles_config:
-    ensembles.append(ensemble.LrEnsemble(e['name'], e['feature_weights'],
-                                         e['intercept_weight']))
-    api_models.update(e['feature_weights'].keys())
-
-  ensemble_names = [e.name for e in ensembles]
-  if _has_duplicates(ensemble_names):
-    raise ValueError('Duplicate ensemble names! {}'.format(ensemble_names))
-  ensembles_with_api_model_names = [e for e in ensemble_names
-                                    if e in AVAILABLE_API_MODELS]
-  if ensembles_with_api_model_names:
-    raise ValueError(
-        'Ensembles cannot have the same name as an API model: {}'.format(
-            ensembles_with_api_model_names))
-
-  return ensembles, api_models
-
-
-def parse_config(filepath):
-  with open(filepath) as f:
-    config = yaml.load(f)
-
-  ensembles, api_models_for_ensembles = [], set()
-  if 'ensembles' in config:
-    ensembles, api_models_for_ensembles = load_ensembles(config['ensembles'])
-
-  rules, models_for_rules = load_rules(config['rules'])
-
-  ensemble_names = set(e.name for e in ensembles)
-  api_models_for_rules = [m for m in models_for_rules
-                          if m not in ensemble_names]
-  api_models = api_models_for_ensembles.union(api_models_for_rules)
-  bad_api_models = api_models - AVAILABLE_API_MODELS
-  if bad_api_models:
-    raise ValueError('requested API models that are not available: {};'
-                     '\nthe set of available API models is: {}'.format(
-                         bad_api_models, AVAILABLE_API_MODELS))
-  return rules, api_models, ensembles
 
 
 def remove_quotes(text):
@@ -189,7 +93,7 @@ def append_comment_data(output_path,
       'comment_id': comment.id,
       'link_id': comment.link_id,  # id of the post
       'parent_id': comment.parent_id,
-      'subreddit': comment.subreddit,
+      'subreddit': str(comment.subreddit),
       'permalink': comment_url(comment),
       'orig_comment_text': comment.body,
       'author': comment.author.name,
@@ -324,7 +228,7 @@ def _main():
 
   args = parser.parse_args()
 
-  rules, api_models, ensembles = parse_config(args.config_file)
+  rules, api_models, ensembles = config.parse_config(args.config_file)
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
                   args.remove_quotes, args.output_dir)
 
