@@ -26,7 +26,6 @@ import pandas as pd
 from compute_bot_metrics import process_modactions_frame, compute_rule_metrics
 
 
-
 class ComputeBotMetricsTest(unittest.TestCase):
 
   def test_process_modactions_frame(self):
@@ -61,7 +60,6 @@ class ComputeBotMetricsTest(unittest.TestCase):
         'flags': [1, 4],
     }, columns=['rule', 'precision', 'recall', 'flags'])
     pd.testing.assert_frame_equal(expected_df, metrics)
-
 
 
 if __name__ == '__main__':
