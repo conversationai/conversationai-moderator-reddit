@@ -4,6 +4,8 @@
 #
 #
 # Rules have the following fields:
+#   name: (optional) name for the rule. Must be unique for the config. If none,
+#         given, a name is auto-generated based on the models used.
 #   perspective_score: A list of models and the thresholds at which to apply the
 #                      rule. If multiple models are listed, then the action only
 #                      occurs if all thresholds are met
@@ -55,7 +57,8 @@ rules:
     action: report
     report_reason: 'Perspective Bot detected IDENTITY_ATTACK > 0.9'
 
-  - perspective_score:
+  - name: 'direct_reply_unsubstantial'
+    perspective_score:
       UNSUBSTANTIAL: '> 0.85'
     comment_features:
       toplevel_only: true

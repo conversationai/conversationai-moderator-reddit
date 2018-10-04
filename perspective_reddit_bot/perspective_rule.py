@@ -22,8 +22,9 @@ from __future__ import print_function
 class Rule(object):
   """A class for checking and applying moderation rules.
   Args:
-    model_rules: (list) A list of model rule dictionaries as read from the
-                 rules yaml file.
+    name: (str) Short name/descriptor for the rule.
+    model_rules: (dict) Model rules from the config file.
+    comment_feature_rules: (dict) Comment feature rules from the config file.
     action_name: (str) The name of an action to take. Currently only 'report'
                  is supported.
     report_reason: (str) (optional) The reason for the report to provide to
@@ -31,29 +32,38 @@ class Rule(object):
   """
 
   def __init__(self,
+               name,
                model_rules,
                comment_feature_rules,
                action_name,
                report_reason=None):
+    if not model_rules:
+      raise ValueError('No model thresholds provided!')
+    if not action_name:
+      raise ValueError('No action_name provided!')
+
+    if not name:
+      name = '__'.join(sorted(model_rules.iterkeys()))
+
+    self.name = name
     self.model_rules = model_rules
     self.comment_feature_rules = comment_feature_rules
     self.action_name = action_name
     self.report_reason = report_reason
-    self.rule_strings = ['%s %s' % (k, v) for k, v in model_rules.items()]
+    self.rule_strings = ['%s %s' % (k, v) for k, v in model_rules.iteritems()]
     if report_reason:
       self.rule_description = report_reason
     else:
-      self.rule_description = 'Perspective Bot detected ' + ' & '.join(self.rule_strings)
-
-    # Check there is at least one model rule.
-    assert len(self.model_rules) > 0, 'No model thresholds provided!'
+      self.rule_description = ('Perspective Bot rule triggered: '
+                               + self.name + ': '
+                               + ' & '.join(self.rule_strings))
 
   def __str__(self):
     return self.rule_description
 
   def check_model_rules(self, model_scores, comment):
     """Checks if a scored comment fulfills the conditions for this rule."""
-    # Checks that all model conditions hold.
+    # Check that all model conditions hold.
     state = True
     for model, comparison in self.model_rules.iteritems():
       assert len(comparison.split()) == 2
@@ -61,6 +71,7 @@ class Rule(object):
       state = state and self._compare (model_scores[model],
                                       comparator,
                                       float(threshold))
+    # Check that comment feature conditions hold.
     for feature, feature_value in self.comment_feature_rules.iteritems():
       if feature == 'toplevel_only' and feature_value:
         is_toplevel_comment = comment.link_id == comment.parent_id
