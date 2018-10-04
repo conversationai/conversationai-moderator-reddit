@@ -54,10 +54,10 @@ class ComputeBotMetricsTest(unittest.TestCase):
     })
     metrics = compute_rule_metrics(df)
     expected_df = pd.DataFrame({
-        'rule': ['hitox', 'medtox'],
-        'precision': [1.0, 0.5],
-        'recall': [0.5, 1.0],
-        'flags': [1, 4],
+        'rule': ['hitox', 'medtox', '~overall~'],
+        'precision': [1.0, 0.5, 0.5],
+        'recall': [0.5, 1.0, 1.0],
+        'flags': [1, 4, 4],
     }, columns=['rule', 'precision', 'recall', 'flags'])
     pd.testing.assert_frame_equal(expected_df, metrics)
 

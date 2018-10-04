@@ -62,15 +62,24 @@ def print_basic_info(df):
 
 
 def compute_rule_metrics(df):
+  def metrics_for_rule(rule_col):
+    return { 'rule': rule_column_to_name(rule_col),
+             'precision': metrics.precision_score(df['removed'], df[rule_col]),
+             'recall': metrics.recall_score(df['removed'], df[rule_col]),
+             'flags': df[rule_col].sum() }
   rule_cols = get_rule_outcome_columns(df)
+
+  # This column is used to compute the overall performance of all the bot's
+  # rules. The column is true whenever the examples are flagged by *any* of the
+  # rules, so this computes precision/recall for the bot as a whole.
+  overall_pseudo_rule = RULE_OUTCOME_OUTPUT_PREFIX + '~overall~'
+  df = df.copy()
+  df[overall_pseudo_rule] = df.loc[:, rule_cols].any(axis=1)
+
   rows = []
   for rule_col in rule_cols:
-    rows.append({
-        'rule': rule_column_to_name(rule_col),
-        'precision': metrics.precision_score(df['removed'], df[rule_col]),
-        'recall': metrics.recall_score(df['removed'], df[rule_col]),
-        'flags': df[rule_col].sum(),
-    })
+    rows.append(metrics_for_rule(rule_col))
+  rows.append(metrics_for_rule(overall_pseudo_rule))
   return pd.DataFrame(rows, columns=['rule', 'precision', 'recall', 'flags'])
 
 
