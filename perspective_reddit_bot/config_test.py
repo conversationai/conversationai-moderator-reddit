@@ -59,11 +59,13 @@ class ConfigTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       config._load_rules([])
 
-  def test_load_rules_fails_on_missing_required_fields(self):
+  def test_load_rules_fails_on_missing_action(self):
     rule_record_missing_action = { 'perspective_score': { 'm1': '> 0.1' } }
-    rule_record_missing_scores = { 'action': 'noop' }
     with self.assertRaises(KeyError):
       config._load_rules([rule_record_missing_action])
+
+  def test_load_rules_fails_on_missing_scores(self):
+    rule_record_missing_scores = { 'action': 'noop' }
     with self.assertRaises(KeyError):
       config._load_rules([rule_record_missing_scores])
 
