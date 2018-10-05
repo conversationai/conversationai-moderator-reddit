@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A reddit bot to detect which actions subreddit moderators actually took."""
+"""A tool to compute performance metrics for the reddit bot."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -75,6 +75,7 @@ def compute_rule_metrics(df):
              'precision': metrics.precision_score(df[REMOVED_COL], df[rule_col]),
              'recall': metrics.recall_score(df[REMOVED_COL], df[rule_col]),
              'flags': df[rule_col].sum() }
+
   rule_cols = get_rule_outcome_columns(df)
 
   # This column is used to compute the overall performance of all the bot's

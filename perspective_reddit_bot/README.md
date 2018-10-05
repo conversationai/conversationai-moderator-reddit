@@ -75,15 +75,21 @@ performing. Namely: how well is the bot flagging comments that should be
 removed?
 
 The `compute_bot_metrics` tool computes precision and recall metrics for each of
-the bot rules. The tool assumes that removed comments were removed due to
-moderation*. For each rule, the tool computes:
+the bot rules, as well as the bot's actions overall. The tool assumes that
+removed comments were removed due to moderation. For each rule, the tool
+computes:
 
 - precision: how many flagged comments were removed
-- recall: how many removed comments were flagged by the bot
+- recall: how many removed comments were flagged by the bot due to the rule
 
-Note that the bot doesn't know _why_ a comment was removed, so these metrics
-aren't quite precisely right (especially recall). But the precision value does
-tell you the false positive rate for each rule .
+As we do not have rule-level data, these definitions don't correspond exactly to
+standard precision and recall metrics. In particular, precision may be
+artificially high (as the rule can get credit for a comment that was actually
+removed for another reason) and recall may be artificially low (as the rule may
+be penalized for comments that it was not supposed to capture). However, both
+metrics still provide some evidence as to the effectiveness of the rule.
+
+
 
 ```shell
 python compute_bot_metrics.py $check_mod_actions_output_file
