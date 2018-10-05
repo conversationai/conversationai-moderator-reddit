@@ -30,8 +30,20 @@ import perspective_client
 
 import config
 
+
 # TODO(nthain): support automated language detection.
 LANGUAGE = 'en'
+
+MODEL_SCORE_OUTPUT_PREFIX = 'score:'
+RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
+UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
+
+def timestamp_string(timestamp):
+  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+
+
+def comment_url(comment):
+  return 'https://reddit.com' + comment.permalink
 
 
 def remove_quotes(text):
@@ -50,9 +62,8 @@ def bot_is_mod(reddit, subreddit):
     return False
 
 
-def apply_action(action_name, comment, descriptions):
-  all_reasons = ', '.join(descriptions)
-
+def apply_action(action_name, comment, rules):
+  all_reasons = ', '.join(r.rule_description for r in rules)
   # Reddit API requires report reasons to be max 100 characters
   if len(all_reasons) > 100:
     all_reasons = all_reasons[:97] + '...'
@@ -66,30 +77,35 @@ def apply_action(action_name, comment, descriptions):
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)
 
 
-def timestamp_string(timestamp):
-  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-
-
-def comment_url(comment):
-  return 'https://reddit.com' + comment.permalink
-
-
-def print_moderation_decision(i, comment, rule):
+def print_actions(i, comment, action_dict):
   print('----------')
   print('Comment #%s: ' % i)
   print(comment.body.encode('utf-8'))
   print('URL: ', comment_url(comment))
-  print('Rule: %s' % rule)
-  print('Action: %s' % rule.action_name)
   print('Subreddit: %s' % comment.subreddit)
+  print('Actions:')
+  for action, rules in action_dict.iteritems():
+    for rule in rules:
+      print('  %s: %s: %s' % (action, rule.name, rule.rule_description))
 
-def append_comment_data(output_path,
-                        comment,
-                        comment_for_scoring,
-                        action_dict,
-                        scores):
-  with open(output_path, 'a') as f:
-    record = {
+
+def create_rule_outcomes_map(action_dict, all_rules):
+  """Build map from each rule's name to which action was triggered, if any."""
+  rule_outcomes = {}
+  # action_dict contains the rules that were triggered.
+  for action, rules in action_dict.iteritems():
+    for rule in rules:
+      rule_outcomes[rule.name] = action
+  # Add all untriggered rules.
+  for rule in all_rules:
+    if rule.name not in rule_outcomes:
+      rule_outcomes[rule.name] = UNTRIGGERED_RULE_OUTPUT_VALUE
+  return rule_outcomes
+
+
+def create_output_record(
+    comment, comment_for_scoring, scores, action_dict, all_rules):
+  record = {
       'comment_id': comment.id,
       'link_id': comment.link_id,  # id of the post
       'parent_id': comment.parent_id,
@@ -98,13 +114,23 @@ def append_comment_data(output_path,
       'orig_comment_text': comment.body,
       'author': comment.author.name,
       'created_utc': timestamp_string(comment.created_utc),
-      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S')}
-    if comment.body != comment_for_scoring:
-      record['scored_comment_text'] = comment_for_scoring
-    record.update(action_dict)
-    record.update(scores)
+      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),
+  }
+  if comment.body != comment_for_scoring:
+    record['scored_comment_text'] = comment_for_scoring
+  rule_outcomes = create_rule_outcomes_map(action_dict, all_rules)
+  record.update({RULE_OUTCOME_OUTPUT_PREFIX + rule: outcome
+                 for rule, outcome in rule_outcomes.iteritems()})
+  record.update({MODEL_SCORE_OUTPUT_PREFIX + model: score
+                 for model, score in scores.iteritems()})
+  return record
+
+
+def append_record(output_path, record):
+  with open(output_path, 'a') as f:
     json.dump(record, f)
     f.write('\n')
+
 
 def score_comment(comment,
                   perspective,
@@ -124,13 +150,15 @@ def score_comment(comment,
 
   return comment_for_scoring, scores
 
-def check_rules(index, comment, rules, scores):
+
+def check_rules(comment, rules, scores):
+  """Returns mapping from actions to triggered rules."""
   action_dict = defaultdict(list)
   for rule in rules:
     if rule.check_model_rules(scores, comment):
-      action_dict[rule.action_name].append(rule.rule_description)
-      print_moderation_decision(index, comment, rule)
+      action_dict[rule.action_name].append(rule)
   return action_dict
+
 
 def score_subreddit(creds_dict,
                     subreddit_name,
@@ -196,20 +224,20 @@ def score_subreddit(creds_dict,
         continue
 
       # Check which rules should be applied
-      action_dict = check_rules(i, comment, rules, scores)
+      action_dict = check_rules(comment, rules, scores)
+      if action_dict:
+        print_actions(i, comment, action_dict)
 
       # Apply actions from triggered rules
       if recent_mod_permissions and initial_mod_permissions:
-        for action, rule_strings in action_dict.items():
-          apply_action(action, comment, rule_strings)
+        for action, triggered_rules in action_dict.iteritems():
+          apply_action(action, comment, triggered_rules)
 
       # Maybe write comment scores to file
       if output_path:
-        append_comment_data(output_path,
-                            comment,
-                            comment_for_scoring,
-                            action_dict,
-                            scores)
+        output_record = create_output_record(
+            comment, comment_for_scoring, scores, action_dict, rules)
+        append_record(output_path, output_record)
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 
@@ -231,6 +259,7 @@ def _main():
   rules, api_models, ensembles = config.parse_config(args.config_file)
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
                   args.remove_quotes, args.output_dir)
+
 
 if __name__ == '__main__':
   _main()
