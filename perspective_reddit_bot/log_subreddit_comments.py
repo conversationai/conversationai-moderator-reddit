@@ -80,8 +80,10 @@ def log_subreddit(creds, subreddit_name, output_dir):
     subreddit_name: (str) The name of the subreddit to stream.
     output_dir: (str) Comments are saved to this directory.
   """
-  output_path = os.path.join(output_dir, '{}_{}.json'.format(
-      subreddit_name, now_timestamp()))
+  output_path = os.path.join(
+      output_dir,
+      'logsubreddit_comments_{}_{}.json'.format(subreddit_name,
+                                                now_timestamp()))
   print('saving comments to:', output_path)
 
   reddit = praw.Reddit(client_id=creds['reddit_client_id'],

@@ -184,8 +184,10 @@ def score_subreddit(creds_dict,
 
   output_path = None
   if output_dir:
-    output_path = os.path.join(output_dir,
-                               '%s_%s.json' % (subreddit_name, now_timestamp()))
+    output_path = os.path.join(
+        output_dir,
+        'modsubreddit_comments_{}_{}.json'.format(subreddit_name,
+                                                  now_timestamp()))
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
