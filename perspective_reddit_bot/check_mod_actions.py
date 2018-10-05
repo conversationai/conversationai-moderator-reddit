@@ -25,7 +25,7 @@ import praw
 import time
 
 from creds import creds
-from log_subreddit_comments import append_record
+from log_subreddit_comments import append_record, now_timestamp
 
 
 APPROVED_COL = 'approved'
@@ -48,7 +48,7 @@ def write_moderator_actions(reddit,
   else:
     record[APPROVED_COL] = None
     record[REMOVED_COL] = None
-  record['action_checked_utc'] = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+  record['action_checked_utc'] = now_timestamp()
   append_record(output_path, record)
 
 

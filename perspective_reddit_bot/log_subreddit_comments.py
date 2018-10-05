@@ -29,8 +29,17 @@ import praw
 from creds import creds
 
 
-def timestamp_string(timestamp):
-  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
+def datetime_timestamp(dt):
+  """Returns compact, filename-friendly string representation of datetime."""
+  return dt.strftime('%Y%m%d_%H%M%S')
+
+
+def now_timestamp():
+  return datetime_timestamp(datetime.now())
+
+
+def posix_timestamp(seconds_since_epoch):
+  return datetime_timestamp(datetime.utcfromtimestamp(seconds_since_epoch))
 
 
 def comment_url(comment):
@@ -52,8 +61,8 @@ def create_comment_output_record(comment):
       'permalink': comment_url(comment),
       'orig_comment_text': comment.body,
       'author': comment.author.name,
-      'created_utc': timestamp_string(comment.created_utc),
-      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),
+      'created_utc': posix_timestamp(comment.created_utc),
+      'bot_scored_utc': now_timestamp(),
   }
 
 
@@ -72,7 +81,7 @@ def log_subreddit(creds, subreddit_name, output_dir):
     output_dir: (str) Comments are saved to this directory.
   """
   output_path = os.path.join(output_dir, '{}_{}.json'.format(
-      subreddit_name, datetime.utcnow().strftime('%Y%m%d_%H%M%S')))
+      subreddit_name, now_timestamp()))
   print('saving comments to:', output_path)
 
   reddit = praw.Reddit(client_id=creds['reddit_client_id'],

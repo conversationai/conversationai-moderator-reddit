@@ -18,10 +18,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from datetime import datetime
 import json
 import unittest
 
-from log_subreddit_comments import create_comment_output_record
+import log_subreddit_comments
 from test_mocks import MockAuthor, MockComment
 
 
@@ -29,13 +30,24 @@ class LogSubredditCommentsTest(unittest.TestCase):
 
   def test_create_comment_output_record(self):
     comment = MockComment(comment_text='hello', parent_id='abc', link_id='def')
-    record = create_comment_output_record(comment)
+    record = log_subreddit_comments.create_comment_output_record(comment)
     self.assertEqual('hello', record['orig_comment_text'])
     self.assertEqual('abc', record['parent_id'])
     self.assertEqual('def', record['link_id'])
     # Check that record is JSON-serializable.
     json_record = json.dumps(record)
     self.assertIn('hello', json_record)
+
+  def test_posix_timestamp(self):
+    self.assertEqual(
+        '20181005_183111',
+        log_subreddit_comments.posix_timestamp(1538764271.067776))
+
+  def test_datetime_timestamp(self):
+    dt = datetime(2018, 10, 05, 1, 2, 3, 4)
+    self.assertEqual(
+        '20181005_010203',
+        log_subreddit_comments.datetime_timestamp(dt))
 
 
 if __name__ == '__main__':

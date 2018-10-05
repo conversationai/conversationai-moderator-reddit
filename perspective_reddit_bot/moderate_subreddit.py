@@ -182,11 +182,10 @@ def score_subreddit(creds_dict,
   perspective = perspective_client.PerspectiveClient(
     creds_dict['perspective_api_key'])
 
-  current_file_time = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
   output_path = None
   if output_dir:
-    file_suffix = '%s_%s.json' % (subreddit_name, current_file_time)
-    output_path = os.path.join(output_dir, file_suffix)
+    output_path = os.path.join(output_dir,
+                               '%s_%s.json' % (subreddit_name, now_timestamp()))
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
