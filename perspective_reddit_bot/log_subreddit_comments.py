@@ -109,8 +109,6 @@ def _main():
   parser.add_argument('subreddit', help='subreddit to moderate')
   args = parser.parse_args()
 
-  print(args)
-
   log_subreddit(creds, args.subreddit, args.output_dir)
 
 
