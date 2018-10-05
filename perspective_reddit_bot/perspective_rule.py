@@ -19,6 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 
+REPORT_ACTION = 'report'
+NOOP_ACTION = 'noop'
+
+
 class Rule(object):
   """A class for checking and applying moderation rules.
   Args:
@@ -26,7 +30,7 @@ class Rule(object):
     model_rules: (dict) Model rules from the config file.
     comment_feature_rules: (dict) Comment feature rules from the config file.
     action_name: (str) The name of an action to take. Currently only 'report'
-                 is supported.
+                 and 'noop' are supported.
     report_reason: (str) (optional) The reason for the report to provide to
                    moderators.
   """
@@ -41,6 +45,8 @@ class Rule(object):
       raise ValueError('No model thresholds provided!')
     if not action_name:
       raise ValueError('No action_name provided!')
+    if action_name not in (REPORT_ACTION, NOOP_ACTION):
+      raise ValueError('action_name not supported: {}'.format(action_name))
 
     if not name:
       name = '__'.join(sorted(model_rules.iterkeys()))

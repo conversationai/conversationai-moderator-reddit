@@ -25,10 +25,10 @@ import os
 import json
 import praw
 
+import config
 from creds import creds
 import perspective_client
-
-import config
+from perspective_rule import REPORT_ACTION, NOOP_ACTION
 
 
 # TODO(nthain): support automated language detection.
@@ -37,6 +37,7 @@ LANGUAGE = 'en'
 MODEL_SCORE_OUTPUT_PREFIX = 'score:'
 RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
 UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
+
 
 def timestamp_string(timestamp):
   return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
@@ -68,10 +69,10 @@ def apply_action(action_name, comment, rules):
   if len(all_reasons) > 100:
     all_reasons = all_reasons[:97] + '...'
 
-  if action_name == 'report':
+  if action_name == REPORT_ACTION:
     print('Reporting: %s' % all_reasons)
     comment.report(all_reasons)
-  elif action_name == 'noop':
+  elif action_name == NOOP_ACTION:
     print('no-op: taking no action')
   else:
     raise ValueError('Action "%s" not yet implemented.' % self.action_name)

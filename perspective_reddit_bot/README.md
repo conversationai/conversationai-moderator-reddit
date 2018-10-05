@@ -65,3 +65,32 @@ to help moderate.
 
 You can optionally specify the `-output_dir` flag to record the scores of
 comments seen by the bot in jsonlines format.
+
+## Quantitative evaluation of bot actions
+
+TODO: add some notes on running `check_mod_actions`.
+
+The output of `check_mod_actions` can be evaluated to see how well the bot is
+performing. Namely: how well is the bot flagging comments that should be
+removed?
+
+The `compute_bot_metrics` tool computes precision and recall metrics for each of
+the bot rules, as well as the bot's actions overall. The tool assumes that
+removed comments were removed due to moderation. For each rule, the tool
+computes:
+
+- precision: how many flagged comments were removed
+- recall: how many removed comments were flagged by the bot due to the rule
+
+As we do not have rule-level data, these definitions don't correspond exactly to
+standard precision and recall metrics. In particular, precision may be
+artificially high (as the rule can get credit for a comment that was actually
+removed for another reason) and recall may be artificially low (as the rule may
+be penalized for comments that it was not supposed to capture). However, both
+metrics still provide some evidence as to the effectiveness of the rule.
+
+
+
+```shell
+python compute_bot_metrics.py $check_mod_actions_output_file
+```

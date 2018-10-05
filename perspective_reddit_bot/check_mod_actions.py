@@ -27,6 +27,10 @@ import time
 from creds import creds
 
 
+APPROVED_COL = 'approved'
+REMOVED_COL = 'removed'
+
+
 def write_moderator_actions(reddit,
                             line,
                             id_key,
@@ -39,10 +43,10 @@ def write_moderator_actions(reddit,
   wait_until(time_to_check)
   approved_removed = check_approved_removed(reddit, record[id_key])
   if approved_removed:
-    record['approved'], record['removed'] = approved_removed
+    record[APPROVED_COL], record[REMOVED_COL] = approved_removed
   else:
-    record['approved'] = None
-    record['removed'] = None
+    record[APPROVED_COL] = None
+    record[REMOVED_COL] = None
   record['action_checked_utc'] = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
   with open(output_path, 'a') as o:
     json.dump(record, o)
