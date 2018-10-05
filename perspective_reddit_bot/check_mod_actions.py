@@ -64,6 +64,10 @@ def check_comment_status(reddit, comment_id, has_mod_creds):
     return None
 
 
+# TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
+# do more extensive, careful testing for comments that are
+# approved-by-moderator, removed-by-moderator, and deleted-by-user when the bot
+# user has mod privileges and when it doesn't have mod privileges.
 def get_comment_status(comment, has_mod_creds):
   status = {
       DELETED_COL: comment.author is None and comment.body == '[deleted]'
