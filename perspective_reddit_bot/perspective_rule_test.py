@@ -21,12 +21,7 @@ from __future__ import print_function
 import unittest
 
 import perspective_rule
-
-
-class MockComment(object):
-  def __init__(self, parent_id, link_id):
-    self.parent_id = parent_id
-    self.link_id = link_id
+from test_mocks import MockComment
 
 
 NESTED_COMMENT = MockComment(parent_id=1, link_id=123)

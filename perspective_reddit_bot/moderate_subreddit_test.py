@@ -22,23 +22,7 @@ import unittest
 
 from moderate_subreddit import remove_quotes, check_rules, create_output_record
 from perspective_rule import Rule
-
-
-class MockAuthor(object):
-  def __init__(self, name):
-    self.name = name
-
-
-class MockComment(object):
-  def __init__(self, comment_text):
-    self.id = 'cid'
-    self.parent_id = 'pid'
-    self.link_id = 'lid'
-    self.subreddit = 'SubReddit'
-    self.permalink = 'r/SubReddit/blahblah'
-    self.body = comment_text
-    self.author = MockAuthor('username')
-    self.created_utc = 123
+from test_mocks import MockAuthor, MockComment
 
 
 class ModerateSubredditTest(unittest.TestCase):
