@@ -29,6 +29,9 @@ import config
 from creds import creds
 import perspective_client
 from perspective_rule import REPORT_ACTION, NOOP_ACTION
+from log_subreddit_comments import (
+    append_record, comment_url, create_comment_output_record
+)
 
 
 # TODO(nthain): support automated language detection.
@@ -37,14 +40,6 @@ LANGUAGE = 'en'
 MODEL_SCORE_OUTPUT_PREFIX = 'score:'
 RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
 UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
-
-
-def timestamp_string(timestamp):
-  return datetime.utcfromtimestamp(timestamp).strftime('%Y%m%d_%H%M%S')
-
-
-def comment_url(comment):
-  return 'https://reddit.com' + comment.permalink
 
 
 def remove_quotes(text):
@@ -104,19 +99,10 @@ def create_rule_outcomes_map(action_dict, all_rules):
   return rule_outcomes
 
 
-def create_output_record(
+def create_mod_comment_output_record(
     comment, comment_for_scoring, scores, action_dict, all_rules):
-  record = {
-      'comment_id': comment.id,
-      'link_id': comment.link_id,  # id of the post
-      'parent_id': comment.parent_id,
-      'subreddit': str(comment.subreddit),
-      'permalink': comment_url(comment),
-      'orig_comment_text': comment.body,
-      'author': comment.author.name,
-      'created_utc': timestamp_string(comment.created_utc),
-      'bot_scored_utc': datetime.utcnow().strftime('%Y%m%d_%H%M%S'),
-  }
+  record = create_comment_output_record(comment)
+
   if comment.body != comment_for_scoring:
     record['scored_comment_text'] = comment_for_scoring
   rule_outcomes = create_rule_outcomes_map(action_dict, all_rules)
@@ -125,12 +111,6 @@ def create_output_record(
   record.update({MODEL_SCORE_OUTPUT_PREFIX + model: score
                  for model, score in scores.iteritems()})
   return record
-
-
-def append_record(output_path, record):
-  with open(output_path, 'a') as f:
-    json.dump(record, f)
-    f.write('\n')
 
 
 def score_comment(comment,
@@ -236,7 +216,7 @@ def score_subreddit(creds_dict,
 
       # Maybe write comment scores to file
       if output_path:
-        output_record = create_output_record(
+        output_record = create_mod_comment_output_record(
             comment, comment_for_scoring, scores, action_dict, rules)
         append_record(output_path, output_record)
     except Exception as e:
