@@ -35,7 +35,7 @@ def datetime_timestamp(dt):
 
 
 def now_timestamp():
-  return datetime_timestamp(datetime.now())
+  return datetime_timestamp(datetime.utcnow())
 
 
 def posix_timestamp(seconds_since_epoch):
