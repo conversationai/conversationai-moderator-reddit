@@ -25,6 +25,7 @@ import praw
 import time
 
 from creds import creds
+from log_subreddit_comments import append_record, now_timestamp
 
 
 APPROVED_COL = 'approved'
@@ -47,10 +48,8 @@ def write_moderator_actions(reddit,
   else:
     record[APPROVED_COL] = None
     record[REMOVED_COL] = None
-  record['action_checked_utc'] = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-  with open(output_path, 'a') as o:
-    json.dump(record, o)
-    o.write('\n')
+  record['action_checked_utc'] = now_timestamp()
+  append_record(output_path, record)
 
 
 def check_approved_removed(reddit, comment_id):
@@ -73,8 +72,8 @@ def wait_until(time_to_proceed):
 
 def _main():
   parser = argparse.ArgumentParser(
-      'Reads the output of moderate_subreddit.py and adds actions taken by'
-      'human moderators.')
+      'Reads the output of moderate_subreddit.py or log_subreddit_comments.py'
+      ' and adds actions taken by human moderators.')
   parser.add_argument('input_path', help='json file with reddit comment ids')
   parser.add_argument('output_path', help='path to write output file')
   parser.add_argument('-id_key', help='json key containing reddit comment id',
