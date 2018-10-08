@@ -21,15 +21,20 @@ from __future__ import print_function
 import argparse
 from datetime import datetime, timedelta
 import json
+import os
 import praw
 import time
 
 from creds import creds
-from log_subreddit_comments import append_record, now_timestamp
+import log_subreddit_comments
+import moderate_subreddit
+
 
 
 APPROVED_COL = 'approved'
 REMOVED_COL = 'removed'
+
+FILENAME_OUTPUT_PREFIX = 'modactions'
 
 
 def write_moderator_actions(reddit,
@@ -48,8 +53,8 @@ def write_moderator_actions(reddit,
   else:
     record[APPROVED_COL] = None
     record[REMOVED_COL] = None
-  record['action_checked_utc'] = now_timestamp()
-  append_record(output_path, record)
+  record['action_checked_utc'] = log_subreddit_comments.now_timestamp()
+  log_subreddit_comments.append_record(output_path, record)
 
 
 def check_approved_removed(reddit, comment_id):
@@ -70,12 +75,38 @@ def wait_until(time_to_proceed):
     time.sleep(time_to_wait)
 
 
+def drop_prefix(s, pre):
+  if s.startswith(pre):
+    return s[len(pre):]
+  return None
+
+
+# Try to return an output filename based on input filename.
+def get_output_filename_from_input(in_file):
+  dirname = os.path.dirname(in_file)
+  basename = os.path.basename(in_file)
+
+  bare_basename = drop_prefix(
+      basename, log_subreddit_comments.FILENAME_OUTPUT_PREFIX)
+  if bare_basename is None:
+    bare_basename = drop_prefix(
+        basename, moderate_subreddit.FILENAME_OUTPUT_PREFIX)
+  if bare_basename is None:
+    raise ValueError(
+        'Failed to figure out an output path. Specify -output_path explicitly.')
+  out_path = os.path.join(
+      dirname, '{}{}'.format(FILENAME_OUTPUT_PREFIX, bare_basename))
+  print('Auto-generated output path:', out_path)
+  return out_path
+
+
 def _main():
   parser = argparse.ArgumentParser(
       'Reads the output of moderate_subreddit.py or log_subreddit_comments.py'
       ' and adds actions taken by human moderators.')
-  parser.add_argument('input_path', help='json file with reddit comment ids')
-  parser.add_argument('output_path', help='path to write output file')
+  parser.add_argument('-input_path', help='json file with reddit comment ids',
+                      required=True)
+  parser.add_argument('-output_path', help='path to write output file')
   parser.add_argument('-id_key', help='json key containing reddit comment id',
                       default='comment_id')
   parser.add_argument('-timestamp_key', help='json key containing timestamp'
@@ -92,6 +123,12 @@ def _main():
                       action='store_true')
 
   args = parser.parse_args()
+
+  output_path = (args.output_path
+                 or get_output_filename_from_input(args.input_path))
+  if os.path.exists(output_path):
+    raise ValueError(
+        'Auto-generated output filename exists already: {}'.format(output_path))
 
   reddit = praw.Reddit(client_id=creds['reddit_client_id'],
                        client_secret=creds['reddit_client_secret'],
