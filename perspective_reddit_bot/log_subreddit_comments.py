@@ -19,12 +19,15 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+from collections import deque
 from datetime import datetime
 import json
 import os
 import sys
+import time
 
 import praw
+import prawcore
 
 from creds import creds
 
@@ -75,6 +78,27 @@ def print_comment(i, record):
   print('comment:\n ', record['orig_comment_text'], '\n\n')
 
 
+_PRAW_INITIAL_COMMENTS = 100
+_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS = 15
+
+
+def comment_stream(stream):
+  """Yields new comments. Handles errors and retries."""
+  seen_comment_ids = deque(maxlen=_PRAW_INITIAL_COMMENTS)
+  while True:
+    try:
+      for x in stream.comments():
+        if x.id in seen_comment_ids:  # Don't return already-seen comments.
+          continue
+        seen_comment_ids.append(x.id)
+        yield x
+    except prawcore.exceptions.ServerError, e:
+      print('\n\nERROR while reading comment stream:', e)
+      print('Waiting {} seconds before retrying...'.format(
+          _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
+      time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
+
+
 def log_subreddit(creds, subreddit_name, output_dir):
   """Log subreddit commments.
 
@@ -97,7 +121,7 @@ def log_subreddit(creds, subreddit_name, output_dir):
                        password=creds['reddit_password'])
   subreddit = reddit.subreddit(subreddit_name)
 
-  for i, comment in enumerate(subreddit.stream.comments()):
+  for i, comment in enumerate(comment_stream(subreddit.stream)):
     try:
       print('.', end='')
       sys.stdout.flush()

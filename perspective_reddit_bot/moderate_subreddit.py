@@ -30,7 +30,8 @@ from creds import creds
 import perspective_client
 from perspective_rule import REPORT_ACTION, NOOP_ACTION
 from log_subreddit_comments import (
-    append_record, comment_url, create_comment_output_record, now_timestamp
+    append_record, comment_stream, comment_url, create_comment_output_record,
+    now_timestamp
 )
 
 
@@ -191,7 +192,7 @@ def score_subreddit(creds_dict,
         '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX, subreddit_name,
                                now_timestamp()))
 
-  for i, comment in enumerate(subreddit.stream.comments()):
+  for i, comment in enumerate(comment_stream(subreddit.stream)):
     try:
       if i % 100 == 0 and i > 0:
         print(i)
