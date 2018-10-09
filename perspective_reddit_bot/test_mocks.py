@@ -24,7 +24,8 @@ class MockAuthor(object):
 
 
 class MockComment(object):
-  def __init__(self, comment_text='hello', parent_id='pid', link_id='lid'):
+  def __init__(self, comment_text='hello', parent_id='pid', link_id='lid',
+               approved=False, removed=False):
     self.id = 'cid'
     self.parent_id = parent_id
     self.link_id = link_id
@@ -33,3 +34,5 @@ class MockComment(object):
     self.body = comment_text
     self.author = MockAuthor('username')
     self.created_utc = 123
+    self.approved = approved
+    self.removed = removed

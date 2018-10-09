@@ -24,6 +24,7 @@ import json
 import os
 import praw
 import time
+import sys
 
 from creds import creds
 import log_subreddit_comments
@@ -33,37 +34,57 @@ import moderate_subreddit
 
 APPROVED_COL = 'approved'
 REMOVED_COL = 'removed'
+DELETED_COL = 'deleted'
 
 FILENAME_OUTPUT_PREFIX = 'modactions'
 
 
 def write_moderator_actions(reddit,
-                            line,
+                            record,
                             id_key,
                             timestamp_key,
                             output_path,
-                            hours_to_wait):
-  record = json.loads(line)
+                            hours_to_wait,
+                            has_mod_creds):
   bot_scored_time = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
   time_to_check = bot_scored_time + timedelta(hours=hours_to_wait)
   wait_until(time_to_check)
-  approved_removed = check_approved_removed(reddit, record[id_key])
-  if approved_removed:
-    record[APPROVED_COL], record[REMOVED_COL] = approved_removed
-  else:
-    record[APPROVED_COL] = None
-    record[REMOVED_COL] = None
+
   record['action_checked_utc'] = log_subreddit_comments.now_timestamp()
+  status_fields = fetch_reddit_comment_status(reddit, record[id_key],
+                                              has_mod_creds)
+  if status_fields is not None:
+    record.update(status_fields)
+
   log_subreddit_comments.append_record(output_path, record)
 
 
-def check_approved_removed(reddit, comment_id):
+def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
   try:
     comment = reddit.comment(comment_id)
-    return comment.approved, comment.removed
+    return get_comment_status(comment, has_mod_creds)
   except Exception as e:
-    print('Skipping comment due to exception: %s' % e)
+    print('\nFailed to check comment status due to exception:', e)
+    if has_mod_creds:
+      print('(Maybe missing moderator credentials?)')
     return None
+
+
+# TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
+# do more extensive, careful testing for comments that are
+# approved-by-moderator, removed-by-moderator, and deleted-by-user when the bot
+# user has mod privileges and when it doesn't have mod privileges.
+def get_comment_status(comment, has_mod_creds):
+  status = {
+      DELETED_COL: comment.author is None and comment.body == '[deleted]'
+  }
+  if has_mod_creds:
+    status[APPROVED_COL] = comment.approved
+    status[REMOVED_COL] = comment.removed
+  else:
+    status[REMOVED_COL] = (comment.author is None
+                           and comment.body == '[removed]')
+  return status
 
 
 def wait_until(time_to_proceed):
@@ -71,7 +92,7 @@ def wait_until(time_to_proceed):
   now = datetime.utcnow()
   if now < time_to_proceed:
     time_to_wait = (time_to_proceed - now).seconds
-    print('Waiting %.1f seconds...' % time_to_wait)
+    print('\nWaiting %.1f seconds...' % time_to_wait)
     time.sleep(time_to_wait)
 
 
@@ -109,6 +130,17 @@ def _main():
   parser.add_argument('-output_path', help='path to write output file')
   parser.add_argument('-id_key', help='json key containing reddit comment id',
                       default='comment_id')
+  parser.add_argument('-mod_creds',
+                      help=('whether the bot has mod credentials. if set,'
+                            ' the output contains "approved", "removed", and'
+                            ' "deleted" fields.'),
+                      dest='has_mod_creds',
+                      action='store_true')
+  parser.add_argument('-no_mod_creds',
+                      help=('the bot does not have mod credentials. the output'
+                            ' only contains "removed" and "deleted" fields,'),
+                      dest='has_mod_creds',
+                      action='store_false')
   parser.add_argument('-timestamp_key', help='json key containing timestamp'
                       'that moderation bot saw comment',
                       default='bot_scored_utc')
@@ -121,8 +153,10 @@ def _main():
                       help='if set, stops the process once the end of file is '
                       'hit instead of waiting for new comments to be written',
                       action='store_true')
-
+  parser.set_defaults(has_mod_creds=None)
   args = parser.parse_args()
+  if args.has_mod_creds is None:
+    raise ValueError('must explicitly use either -mod_creds or -no_mod_creds!')
 
   output_path = (args.output_path
                  or get_output_filename_from_input(args.input_path))
@@ -141,17 +175,20 @@ def _main():
     while True:
       where = f.tell()
       line = f.readline()
+      print('.', end='')
+      sys.stdout.flush()
       if line:
         write_moderator_actions(reddit,
-                                line,
+                                json.loads(line),
                                 args.id_key,
                                 args.timestamp_key,
                                 output_path,
-                                args.hours_to_wait)
+                                args.hours_to_wait,
+                                args.has_mod_creds)
       elif args.stop_at_eof:
         return
       else:
-        print('Reached EOF. Waiting for new data...')
+        print('\nReached EOF. Waiting for new data...')
         time.sleep(args.hours_to_wait * 3600)
         f.seek(where)
 

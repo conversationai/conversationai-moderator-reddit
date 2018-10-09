@@ -100,6 +100,7 @@ def log_subreddit(creds, subreddit_name, output_dir):
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
       print('.', end='')
+      sys.stdout.flush()
       output_record = create_comment_output_record(comment)
       if i % 25 == 0: print_comment(i, output_record)
       append_record(output_path, output_record)
@@ -112,8 +113,6 @@ def _main():
   parser.add_argument('output_dir', help=' where to save comments')
   parser.add_argument('subreddit', help='subreddit to moderate')
   args = parser.parse_args()
-
-  print(args)
 
   log_subreddit(creds, args.subreddit, args.output_dir)
 
