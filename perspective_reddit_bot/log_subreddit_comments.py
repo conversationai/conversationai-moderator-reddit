@@ -99,7 +99,6 @@ def comment_stream(stream):
       time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
 
 
-
 def log_subreddit(creds, subreddit_name, output_dir):
   """Log subreddit commments.
 
