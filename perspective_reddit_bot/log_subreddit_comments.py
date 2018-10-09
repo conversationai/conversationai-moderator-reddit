@@ -29,13 +29,16 @@ import praw
 from creds import creds
 
 
+FILENAME_OUTPUT_PREFIX = 'logsubreddit_comments'
+
+
 def datetime_timestamp(dt):
   """Returns compact, filename-friendly string representation of datetime."""
   return dt.strftime('%Y%m%d_%H%M%S')
 
 
 def now_timestamp():
-  return datetime_timestamp(datetime.now())
+  return datetime_timestamp(datetime.utcnow())
 
 
 def posix_timestamp(seconds_since_epoch):
@@ -82,8 +85,9 @@ def log_subreddit(creds, subreddit_name, output_dir):
   """
   output_path = os.path.join(
       output_dir,
-      'logsubreddit_comments_{}_{}.json'.format(subreddit_name,
-                                                now_timestamp()))
+      '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX,
+                             subreddit_name,
+                             now_timestamp()))
   print('saving comments to:', output_path)
 
   reddit = praw.Reddit(client_id=creds['reddit_client_id'],
