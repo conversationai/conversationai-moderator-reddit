@@ -30,7 +30,7 @@ from creds import creds
 import perspective_client
 from perspective_rule import REPORT_ACTION, NOOP_ACTION
 from log_subreddit_comments import (
-    append_record, comment_url, create_comment_output_record
+    append_record, comment_url, create_comment_output_record, now_timestamp
 )
 
 
@@ -40,6 +40,8 @@ LANGUAGE = 'en'
 MODEL_SCORE_OUTPUT_PREFIX = 'score:'
 RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
 UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
+
+FILENAME_OUTPUT_PREFIX = 'modsubreddit_comments'
 
 
 def remove_quotes(text):
@@ -186,8 +188,8 @@ def score_subreddit(creds_dict,
   if output_dir:
     output_path = os.path.join(
         output_dir,
-        'modsubreddit_comments_{}_{}.json'.format(subreddit_name,
-                                                  now_timestamp()))
+        '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX, subreddit_name,
+                               now_timestamp()))
 
   for i, comment in enumerate(subreddit.stream.comments()):
     try:
