@@ -46,14 +46,15 @@ def write_moderator_actions(reddit,
   wait_until(time_to_check)
 
   record['action_checked_utc'] = now_timestamp()
-  status_fields = check_comment_status(reddit, record[id_key], has_mod_creds)
+  status_fields = fetch_reddit_comment_status(reddit, record[id_key],
+                                              has_mod_creds)
   if status_fields is not None:
     record.update(status_fields)
 
   append_record(output_path, record)
 
 
-def check_comment_status(reddit, comment_id, has_mod_creds):
+def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
   try:
     comment = reddit.comment(comment_id)
     return get_comment_status(comment, has_mod_creds)
