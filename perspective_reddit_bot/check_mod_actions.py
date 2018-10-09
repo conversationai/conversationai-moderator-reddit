@@ -146,7 +146,7 @@ def _main():
                                 line,
                                 args.id_key,
                                 args.timestamp_key,
-                                args.output_path,
+                                output_path,
                                 args.hours_to_wait)
       elif args.stop_at_eof:
         return
