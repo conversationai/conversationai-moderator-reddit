@@ -42,6 +42,8 @@ MODEL_SCORE_OUTPUT_PREFIX = 'score:'
 RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
 UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
 
+FILENAME_OUTPUT_PREFIX = 'modsubreddit_comments'
+
 
 def remove_quotes(text):
   """Removes lines that begin with '>', indicating a Reddit quote."""
@@ -187,8 +189,8 @@ def score_subreddit(creds_dict,
   if output_dir:
     output_path = os.path.join(
         output_dir,
-        'modsubreddit_comments_{}_{}.json'.format(subreddit_name,
-                                                  now_timestamp()))
+        '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX, subreddit_name,
+                               now_timestamp()))
 
   for i, comment in enumerate(comment_stream(subreddit.stream)):
     try:
