@@ -26,7 +26,6 @@ import json
 import praw
 
 import config
-from creds import creds
 import perspective_client
 from perspective_rule import REPORT_ACTION, NOOP_ACTION
 from log_subreddit_comments import (
@@ -231,6 +230,8 @@ def _main():
   parser = argparse.ArgumentParser(
       'A bot to moderate a subreddit with the Perspective API.')
   parser.add_argument('subreddit', help='subreddit to moderate')
+  parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
+                      default='creds.json')
   parser.add_argument('-config_file', help='config file with moderation rules',
                       default='config.yaml')
   parser.add_argument('-remove_quotes', help='remove quotes when scoring text',
@@ -240,8 +241,10 @@ def _main():
                       default=None)
 
   args = parser.parse_args()
-
+  with open(args.creds) as f:
+    creds = json.load(f)
   rules, api_models, ensembles = config.parse_config(args.config_file)
+
   score_subreddit(creds, args.subreddit, rules, api_models, ensembles,
                   args.remove_quotes, args.output_dir)
 

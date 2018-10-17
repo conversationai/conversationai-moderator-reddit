@@ -29,8 +29,6 @@ import time
 import praw
 import prawcore
 
-from creds import creds
-
 
 FILENAME_OUTPUT_PREFIX = 'logsubreddit_comments'
 
@@ -134,9 +132,14 @@ def log_subreddit(creds, subreddit_name, output_dir):
 
 def _main():
   parser = argparse.ArgumentParser('A tool to log comments to a subreddit.')
+  parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
+                      default='creds.json')
   parser.add_argument('output_dir', help=' where to save comments')
   parser.add_argument('subreddit', help='subreddit to moderate')
+
   args = parser.parse_args()
+  with open(args.creds) as f:
+    creds = json.load(f)
 
   log_subreddit(creds, args.subreddit, args.output_dir)
 

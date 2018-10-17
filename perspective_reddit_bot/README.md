@@ -32,8 +32,8 @@ moderation permissions on the subreddit being moderated.
    pip install -r requirements.txt
    ```
 
-3. Set up a `creds.py` file with your Reddit and Perspective API credentials.
-   This file can be created by copying creds_template.py and filling in the
+3. Set up a `creds.json` file with your Reddit and Perspective API credentials.
+   This file can be created by copying `creds_template.json` and filling in the
    appropriate fields in the dictionary. You can find more information about
    obtaining Reddit credentials from the [PRAW documentation](https://praw.readthedocs.io/en/latest/getting_started/authentication.html#script-application)
    and Perspective API credentials from
