@@ -54,7 +54,7 @@ def write_moderator_actions(reddit,
   if status_fields is not None:
     record.update(status_fields)
 
-  log_subreddit_comments.append_record(output_path, record)
+  log_subreddit_comments.append_records(output_path, [record])
 
 
 def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
