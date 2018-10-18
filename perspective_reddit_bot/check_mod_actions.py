@@ -26,7 +26,6 @@ import praw
 import time
 import sys
 
-from creds import creds
 import log_subreddit_comments
 import moderate_subreddit
 
@@ -130,6 +129,8 @@ def _main():
   parser.add_argument('-output_path', help='path to write output file')
   parser.add_argument('-id_key', help='json key containing reddit comment id',
                       default='comment_id')
+  parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
+                      default='creds.json')
   parser.add_argument('-mod_creds',
                       help=('whether the bot has mod credentials. if set,'
                             ' the output contains "approved", "removed", and'
@@ -163,6 +164,9 @@ def _main():
   if os.path.exists(output_path):
     raise ValueError(
         'Auto-generated output filename exists already: {}'.format(output_path))
+
+  with open(args.creds) as f:
+    creds = json.load(f)
 
   reddit = praw.Reddit(client_id=creds['reddit_client_id'],
                        client_secret=creds['reddit_client_secret'],
