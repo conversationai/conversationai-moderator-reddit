@@ -139,7 +139,6 @@ def prefix_comment_id(i):
 # there's extra bookkeeping to check for dropped records. if this ~never
 # happens, we can simplify this code significantly.
 def check_mod_actions(output_path, reddit, comments, id_key, has_mod_creds):
-  print('checking mod actions for', len(comments), ' comments...')
   comment_ids = [prefix_comment_id(c[id_key]) for c in comments]
   statuses = fetch_comment_statuses(reddit, comment_ids, has_mod_creds)
 
@@ -147,16 +146,13 @@ def check_mod_actions(output_path, reddit, comments, id_key, has_mod_creds):
   # records. (Cannot comments with statuses, since reddit.info() may drop
   # records.)
   comments_by_id = {c[id_key]: c for c in comments}
-  for status in statuses:
-    if not status:
-      print('BUG: status was empty?', status)
+  for comment_id, status in statuses:
+    if not comment_id or not status:
       continue
-    comment_id = status['id']
     if comment_id not in comments_by_id:
       print('BUG: status comment ID not in comments_by_id, dupe?', comment_id)
       continue
     comment = comments_by_id[comment_id]
-    del status['id']  # just used to look up the comment in comments_by_id.
     comment.update(status)
     comment['action_checked_utc'] = log_subreddit_comments.now_timestamp()
     # Remove from record keeping so we can detect if there are leftover comments
@@ -164,7 +160,7 @@ def check_mod_actions(output_path, reddit, comments, id_key, has_mod_creds):
     del comments_by_id[comment_id]
   if comments_by_id:
     print('BUG: {} comments did not have status data. ids: {}'.format(
-        len(comments_by_id), ', '.join(comments_by_id.keys())))
+        len(comments_by_id), list(comments_by_id.keys())))
 
   log_subreddit_comments.append_records(output_path, comments)
 
@@ -174,33 +170,35 @@ def fetch_comment_statuses(reddit, comment_ids, has_mod_creds):
     return (get_comment_status(c, has_mod_creds)
             for c in reddit.info(comment_ids))
   except Exception as e:
-    print('\nFailed to fetch comment statuses due to exception:', e)
+    print('\nERROR: Failed to fetch comment statuses:', e)
     if has_mod_creds:
       print('(Maybe missing moderator credentials?)')
     return []
 
-
 def get_comment_status(comment, has_mod_creds):
-  status = {
-      'id': comment.id,
-      DELETED_COL: comment.author is None and comment.body == '[deleted]',
-      SCORE_COL: comment.score,
-      UPS_COL: comment.ups,
-      DOWNS_COL: comment.downs,
-      SCORE_HIDDEN_COL: comment.score_hidden,
-      COLLAPSED_COL: comment.collapsed,
-  }
-  # TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
-  # do more extensive, careful testing for comments that are
-  # approved-by-moderator, removed-by-moderator, and deleted-by-user when the
-  # bot user has mod privileges and when it doesn't have mod privileges.
-  if has_mod_creds:
-    status[APPROVED_COL] = comment.approved
-    status[REMOVED_COL] = comment.removed
-  else:
-    status[REMOVED_COL] = (comment.author is None
-                           and comment.body == '[removed]')
-  return status
+  try:
+    status = {
+        DELETED_COL: comment.author is None and comment.body == '[deleted]',
+        SCORE_COL: comment.score,
+        UPS_COL: comment.ups,
+        DOWNS_COL: comment.downs,
+        SCORE_HIDDEN_COL: comment.score_hidden,
+        COLLAPSED_COL: comment.collapsed,
+    }
+    # TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
+    # do more extensive, careful testing for comments that are
+    # approved-by-moderator, removed-by-moderator, and deleted-by-user when the
+    # bot user has mod privileges and when it doesn't have mod privileges.
+    if has_mod_creds:
+      status[APPROVED_COL] = comment.approved
+      status[REMOVED_COL] = comment.removed
+    else:
+      status[REMOVED_COL] = (comment.author is None
+                             and comment.body == '[removed]')
+    return comment.id, status
+  except Exception as e:
+    print('\nERROR: failed to get comment status:', e)
+    return None, None
 
 
 def wait_until(time_to_proceed_utc):
