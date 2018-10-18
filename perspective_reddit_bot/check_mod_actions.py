@@ -30,9 +30,23 @@ import log_subreddit_comments
 import moderate_subreddit
 
 
+# approved, removed, and deleted columns are booleans. 'approved' is only
+# present when the bot is a mod.
 APPROVED_COL = 'approved'
 REMOVED_COL = 'removed'
 DELETED_COL = 'deleted'
+# score, ups, and downs refer to user votes. in practice, it appears that
+# 'downs' is always 0 and 'score' == 'ups'. (this may be different if the bot is
+# a mod.)
+SCORE_COL = 'score'
+UPS_COL = 'ups'
+DOWNS_COL = 'downs'
+SCORE_HIDDEN_COL = 'score_hidden'
+# collapsed is a boolean. it appears to be true when the comment (and all its
+# children) are collapsed in the UI. this most commonly happens when the comment
+# is deleted or removed, but it also seems to happens when the comment has more
+# downvotes
+COLLAPSED_COL = 'collapsed'
 
 FILENAME_OUTPUT_PREFIX = 'modactions'
 
@@ -74,7 +88,12 @@ def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
 # user has mod privileges and when it doesn't have mod privileges.
 def get_comment_status(comment, has_mod_creds):
   status = {
-      DELETED_COL: comment.author is None and comment.body == '[deleted]'
+      DELETED_COL: comment.author is None and comment.body == '[deleted]',
+      SCORE_COL: comment.score,
+      UPS_COL: comment.ups,
+      DOWNS_COL: comment.downs,
+      SCORE_HIDDEN_COL: comment.score_hidden,
+      COLLAPSED_COL: comment.collapsed,
   }
   if has_mod_creds:
     status[APPROVED_COL] = comment.approved
