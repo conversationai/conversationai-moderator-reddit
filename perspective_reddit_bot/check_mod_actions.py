@@ -101,7 +101,10 @@ def drop_prefix(s, pre):
 
 
 # Try to return an output filename based on input filename.
-def get_output_filename_from_input(in_file):
+def get_output_filename_from_input(in_file, hours_to_wait):
+  if int(hours_to_wait) == hours_to_wait:
+    # Drop ".0" suffix when included in filename.
+    hours_to_wait = int(hours_to_wait)
   dirname = os.path.dirname(in_file)
   basename = os.path.basename(in_file)
 
@@ -114,7 +117,8 @@ def get_output_filename_from_input(in_file):
     raise ValueError(
         'Failed to figure out an output path. Specify -output_path explicitly.')
   out_path = os.path.join(
-      dirname, '{}{}'.format(FILENAME_OUTPUT_PREFIX, bare_basename))
+      dirname, '{}_{}delay{}'.format(FILENAME_OUTPUT_PREFIX, hours_to_wait,
+                                     bare_basename))
   print('Auto-generated output path:', out_path)
   return out_path
 
@@ -158,7 +162,8 @@ def _main():
     raise ValueError('must explicitly use either -mod_creds or -no_mod_creds!')
 
   output_path = (args.output_path
-                 or get_output_filename_from_input(args.input_path))
+                 or get_output_filename_from_input(args.input_path,
+                                                   args.hours_to_wait))
   if os.path.exists(output_path):
     raise ValueError('Output filename exists already: {}'.format(output_path))
 
