@@ -160,8 +160,7 @@ def _main():
   output_path = (args.output_path
                  or get_output_filename_from_input(args.input_path))
   if os.path.exists(output_path):
-    raise ValueError(
-        'Auto-generated output filename exists already: {}'.format(output_path))
+    raise ValueError('Output filename exists already: {}'.format(output_path))
 
   with open(args.creds) as f:
     creds = json.load(f)
