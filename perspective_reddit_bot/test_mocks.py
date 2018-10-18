@@ -36,3 +36,8 @@ class MockComment(object):
     self.created_utc = 123
     self.approved = approved
     self.removed = removed
+    self.score_hidden = False
+    self.score = 10
+    self.ups = 10
+    self.downs = 0
+    self.collapsed = False
