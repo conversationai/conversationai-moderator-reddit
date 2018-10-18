@@ -91,7 +91,7 @@ def comment_stream(stream):
           continue
         seen_comment_ids.append(x.id)
         yield x
-    except prawcore.exceptions.ServerError, e:
+    except prawcore.exceptions.ServerError as e:
       print('\n\nERROR while reading comment stream:', e)
       print('Waiting {} seconds before retrying...'.format(
           _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
