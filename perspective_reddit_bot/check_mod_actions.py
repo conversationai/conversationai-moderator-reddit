@@ -102,7 +102,10 @@ def read_batches(input_path, stop_at_eof, max_batch_delay):
   current_batch = []
   last_yield_time = datetime.utcnow()
   sentinel = object()
-  for line in read_lines(input_path, stop_at_eof, max_batch_delay, sentinel):
+  # read_lines may yield a line right before the max_batch_delay is reached,
+  # so we divide the delay by 2 to ensure we get batches out within
+  # max_batch_delay.
+  for line in read_lines(input_path, stop_at_eof, max_batch_delay/2, sentinel):
     now = datetime.utcnow()
     if line is not sentinel:
       current_batch.append(line)
@@ -130,7 +133,10 @@ def read_records_with_wait(input_path, stop_at_eof, max_batch_delay,
     yield records
 
 
+# reddit.info() requires 'fullname' IDs. Comment fullname IDs include a
+# 't1_' prefix.
 def prefix_comment_id(i):
+  """Return 'fullname' version of ID (includes Reddit type prefix)."""
   return i if i.startswith('t1_') else 't1_' + i
 
 
@@ -143,8 +149,8 @@ def check_mod_actions(output_path, reddit, comments, id_key, has_mod_creds):
   statuses = fetch_comment_statuses(reddit, comment_ids, has_mod_creds)
 
   # Index comments by ID so we can attach the status data to the comment
-  # records. (Cannot comments with statuses, since reddit.info() may drop
-  # records.)
+  # records. (Cannot simply zip comments with statuses, since reddit.info() may
+  # drop records.)
   comments_by_id = {c[id_key]: c for c in comments}
   for comment_id, status in statuses:
     if not comment_id or not status:
