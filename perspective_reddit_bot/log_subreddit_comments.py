@@ -30,7 +30,7 @@ import praw
 import prawcore
 
 
-FILENAME_OUTPUT_PREFIX = 'logsubreddit_comments'
+FILENAME_OUTPUT_PREFIX = 'logsubredditcomments'
 
 
 def datetime_timestamp(dt):
@@ -97,18 +97,22 @@ def comment_stream(stream):
       time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
 
 
-def log_subreddit(creds, subreddit_name, output_dir):
+def log_subreddit(creds, subreddits, output_dir):
   """Log subreddit commments.
 
   Args:
     creds: (dict) A dictionary of API credentials for Reddit.
-    subreddit_name: (str) The name of the subreddit to stream.
+    subreddits: (list of str) names of subreddits to stream.
     output_dir: (str) Comments are saved to this directory.
   """
+  all_subs = '+'.join(subreddits)
+  output_path_subreddit_part = all_subs
+  if len(all_subs) > 50:
+    output_path_subreddit_part = '_{}_subs_'.format(len(subreddits))
   output_path = os.path.join(
       output_dir,
       '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX,
-                             subreddit_name,
+                             output_path_subreddit_part,
                              now_timestamp()))
   print('saving comments to:', output_path)
 
@@ -117,7 +121,7 @@ def log_subreddit(creds, subreddit_name, output_dir):
                        user_agent=creds['reddit_user_agent'],
                        username=creds['reddit_username'],
                        password=creds['reddit_password'])
-  subreddit = reddit.subreddit(subreddit_name)
+  subreddit = reddit.subreddit(all_subs)
 
   for i, comment in enumerate(comment_stream(subreddit.stream)):
     try:
@@ -130,18 +134,42 @@ def log_subreddit(creds, subreddit_name, output_dir):
       print('\n\nEXCEPTION!\nException: {}\nSkipping comment: {}\n', e, comment)
 
 
+def _read_subreddits_file(filename):
+  subs = []
+  with open(filename) as f:
+    for line in f:
+      subs.append(line.strip())
+  return subs
+
+
 def _main():
   parser = argparse.ArgumentParser('A tool to log comments to a subreddit.')
   parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
                       default='creds.json')
-  parser.add_argument('output_dir', help=' where to save comments')
-  parser.add_argument('subreddit', help='subreddit to moderate')
+  parser.add_argument('-output_dir', help=' where to save comments')
+  parser.add_argument('-subreddit', help='subreddit to log')
+  parser.add_argument('-subreddits_file', help='file with list of subreddits')
 
   args = parser.parse_args()
+
+  if args.subreddit and args.subreddits_file:
+    raise ValueError('Should only use one of -subreddit or -subreddits_file!')
+  if not (args.subreddit or args.subreddits_file):
+    raise ValueError('Must specify -subreddit or -subreddits_file!')
+  if args.subreddit:
+    subs = [args.subreddit]
+  else:
+    subs = _read_subreddits_file(args.subreddits_file)
+    if len(subs) > 400:
+      # TODO: i got errors with ~600 subreddits. figure out official limits.
+      print('Warning: logging many ({}) subreddits.'
+            ' This may cause PRAW errors..'.format(len(subs)))
+
   with open(args.creds) as f:
     creds = json.load(f)
 
-  log_subreddit(creds, args.subreddit, args.output_dir)
+
+  log_subreddit(creds, subs, args.output_dir)
 
 
 if __name__ == '__main__':

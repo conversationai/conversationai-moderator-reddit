@@ -41,7 +41,7 @@ MODEL_SCORE_OUTPUT_PREFIX = 'score:'
 RULE_OUTCOME_OUTPUT_PREFIX = 'rule:'
 UNTRIGGERED_RULE_OUTPUT_VALUE = 'rule-not-triggered'
 
-FILENAME_OUTPUT_PREFIX = 'modsubreddit_comments'
+FILENAME_OUTPUT_PREFIX = 'modsubreddit'
 
 
 def remove_quotes(text):
