@@ -154,7 +154,8 @@ class PerspectiveClient(object):
     every_5_percent = _progress_points(frac=0.05, total=len(texts))
     # pylint: disable=missing-docstring
 
-    def score_one((i, text)):
+    def score_one(itext):
+      i, text = itext
       # Note: This can run out of order, which is a little weird.
       if i in every_5_percent and verbose:
         print('scoring {} of {} ({:.1f}%)'.format(

@@ -50,10 +50,11 @@ def comment_url(comment):
   return 'https://reddit.com' + comment.permalink
 
 
-def append_record(output_path, record):
+def append_records(output_path, records):
   with open(output_path, 'a') as f:
-    json.dump(record, f)
-    f.write('\n')
+    for r in records:
+      json.dump(r, f)
+      f.write('\n')
 
 
 def create_comment_output_record(comment):
@@ -90,7 +91,7 @@ def comment_stream(stream):
           continue
         seen_comment_ids.append(x.id)
         yield x
-    except prawcore.exceptions.ServerError, e:
+    except prawcore.exceptions.ServerError as e:
       print('\n\nERROR while reading comment stream:', e)
       print('Waiting {} seconds before retrying...'.format(
           _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
@@ -129,7 +130,7 @@ def log_subreddit(creds, subreddits, output_dir):
       sys.stdout.flush()
       output_record = create_comment_output_record(comment)
       if i % 25 == 0: print_comment(i, output_record)
-      append_record(output_path, output_record)
+      append_records(output_path, [output_record])
     except Exception as e:
       print('\n\nEXCEPTION!\nException: {}\nSkipping comment: {}\n', e, comment)
 

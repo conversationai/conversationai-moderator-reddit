@@ -29,7 +29,7 @@ import config
 import perspective_client
 from perspective_rule import REPORT_ACTION, NOOP_ACTION
 from log_subreddit_comments import (
-    append_record, comment_stream, comment_url, create_comment_output_record,
+    append_records, comment_stream, comment_url, create_comment_output_record,
     now_timestamp
 )
 
@@ -221,7 +221,7 @@ def score_subreddit(creds_dict,
       if output_path:
         output_record = create_mod_comment_output_record(
             comment, comment_for_scoring, scores, action_dict, rules)
-        append_record(output_path, output_record)
+        append_records(output_path, [output_record])
     except Exception as e:
       print('Skipping comment due to exception: %s' % e)
 

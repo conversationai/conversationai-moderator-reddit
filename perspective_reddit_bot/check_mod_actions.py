@@ -30,10 +30,26 @@ import log_subreddit_comments
 import moderate_subreddit
 
 
-
+# approved, removed, and deleted columns are booleans. 'approved' is only
+# present when the bot is a mod.
 APPROVED_COL = 'approved'
 REMOVED_COL = 'removed'
 DELETED_COL = 'deleted'
+# score, ups, and downs refer to user votes. in practice, it appears that
+# 'downs' is always 0 and 'score' == 'ups'. (this may be different if the bot is
+# a mod.)
+SCORE_COL = 'score'
+UPS_COL = 'ups'
+DOWNS_COL = 'downs'
+# score_hidden is a boolean for when the above score-related fields are hidden
+# due to subreddit rules. with a sufficient hours_to_wait delay, this shouldn't
+# be true for the checked comments.
+SCORE_HIDDEN_COL = 'score_hidden'
+# collapsed is a boolean. it appears to be true when the comment (and all its
+# children) are collapsed in the UI. this most commonly happens when the comment
+# is deleted or removed, but it also seems to happens when the comment has more
+# downvotes
+COLLAPSED_COL = 'collapsed'
 
 FILENAME_OUTPUT_PREFIX = 'modactions'
 
@@ -45,9 +61,9 @@ def write_moderator_actions(reddit,
                             output_path,
                             hours_to_wait,
                             has_mod_creds):
-  bot_scored_time = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
-  time_to_check = bot_scored_time + timedelta(hours=hours_to_wait)
-  wait_until(time_to_check)
+  create_time_utc = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
+  check_time_utc = create_time_utc + timedelta(hours=hours_to_wait)
+  wait_until(check_time_utc)
 
   record['action_checked_utc'] = log_subreddit_comments.now_timestamp()
   status_fields = fetch_reddit_comment_status(reddit, record[id_key],
@@ -55,7 +71,7 @@ def write_moderator_actions(reddit,
   if status_fields is not None:
     record.update(status_fields)
 
-  log_subreddit_comments.append_record(output_path, record)
+  log_subreddit_comments.append_records(output_path, [record])
 
 
 def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
@@ -75,7 +91,12 @@ def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
 # user has mod privileges and when it doesn't have mod privileges.
 def get_comment_status(comment, has_mod_creds):
   status = {
-      DELETED_COL: comment.author is None and comment.body == '[deleted]'
+      DELETED_COL: comment.author is None and comment.body == '[deleted]',
+      SCORE_COL: comment.score,
+      UPS_COL: comment.ups,
+      DOWNS_COL: comment.downs,
+      SCORE_HIDDEN_COL: comment.score_hidden,
+      COLLAPSED_COL: comment.collapsed,
   }
   if has_mod_creds:
     status[APPROVED_COL] = comment.approved
@@ -86,13 +107,13 @@ def get_comment_status(comment, has_mod_creds):
   return status
 
 
-def wait_until(time_to_proceed):
+def wait_until(time_to_proceed_utc):
   """Waits until the current utc datetime is past time_to_proceed"""
   now = datetime.utcnow()
-  if now < time_to_proceed:
-    time_to_wait = (time_to_proceed - now).seconds
-    print('\nWaiting %.1f seconds...' % time_to_wait)
-    time.sleep(time_to_wait)
+  if now < time_to_proceed_utc:
+    seconds_to_wait = (time_to_proceed_utc - now).seconds
+    print('\nWaiting %.1f seconds...' % seconds_to_wait)
+    time.sleep(seconds_to_wait)
 
 
 def drop_prefix(s, pre):
@@ -102,7 +123,10 @@ def drop_prefix(s, pre):
 
 
 # Try to return an output filename based on input filename.
-def get_output_filename_from_input(in_file):
+def get_output_filename_from_input(in_file, hours_to_wait):
+  if int(hours_to_wait) == hours_to_wait:
+    # Drop ".0" suffix when included in filename.
+    hours_to_wait = int(hours_to_wait)
   dirname = os.path.dirname(in_file)
   basename = os.path.basename(in_file)
 
@@ -115,7 +139,8 @@ def get_output_filename_from_input(in_file):
     raise ValueError(
         'Failed to figure out an output path. Specify -output_path explicitly.')
   out_path = os.path.join(
-      dirname, '{}{}'.format(FILENAME_OUTPUT_PREFIX, bare_basename))
+      dirname, '{}_{}delay{}'.format(FILENAME_OUTPUT_PREFIX, hours_to_wait,
+                                     bare_basename))
   print('Auto-generated output path:', out_path)
   return out_path
 
@@ -127,8 +152,6 @@ def _main():
   parser.add_argument('-input_path', help='json file with reddit comment ids',
                       required=True)
   parser.add_argument('-output_path', help='path to write output file')
-  parser.add_argument('-id_key', help='json key containing reddit comment id',
-                      default='comment_id')
   parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
                       default='creds.json')
   parser.add_argument('-mod_creds',
@@ -142,14 +165,15 @@ def _main():
                             ' only contains "removed" and "deleted" fields,'),
                       dest='has_mod_creds',
                       action='store_false')
-  parser.add_argument('-timestamp_key', help='json key containing timestamp'
-                      'that moderation bot saw comment',
-                      default='bot_scored_utc')
+  parser.add_argument('-id_key', help='json key containing reddit comment id',
+                      default='comment_id')
+  parser.add_argument('-timestamp_key',
+                      help='json key for timestamp when comment was created',
+                      default='created_utc')
   parser.add_argument('-hours_to_wait',
-                      help='the number of hours to wait to allow moderators to'
-                      ' respond to bot',
+                      help='hours to wait before checking action',
                       type=float,
-                      default=12)
+                      default=24)
   parser.add_argument('-stop_at_eof',
                       help='if set, stops the process once the end of file is '
                       'hit instead of waiting for new comments to be written',
@@ -160,10 +184,10 @@ def _main():
     raise ValueError('must explicitly use either -mod_creds or -no_mod_creds!')
 
   output_path = (args.output_path
-                 or get_output_filename_from_input(args.input_path))
+                 or get_output_filename_from_input(args.input_path,
+                                                   args.hours_to_wait))
   if os.path.exists(output_path):
-    raise ValueError(
-        'Auto-generated output filename exists already: {}'.format(output_path))
+    raise ValueError('Output filename exists already: {}'.format(output_path))
 
   with open(args.creds) as f:
     creds = json.load(f)
