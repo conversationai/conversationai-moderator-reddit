@@ -108,7 +108,8 @@ def read_batches(input_path, stop_at_eof, max_batch_delay):
   # read_lines may yield a line right before the max_batch_delay is reached,
   # so we divide the delay by 2 to ensure we get batches out within
   # max_batch_delay.
-  for line in read_lines(input_path, stop_at_eof, max_batch_delay/2, sentinel):
+  lines_delay = timedelta(seconds=max_batch_delay.total_seconds() / 2)
+  for line in read_lines(input_path, stop_at_eof, lines_delay, sentinel):
     now = datetime.utcnow()
     if line is not sentinel:
       current_batch.append(line)
