@@ -41,6 +41,9 @@ DELETED_COL = 'deleted'
 SCORE_COL = 'score'
 UPS_COL = 'ups'
 DOWNS_COL = 'downs'
+# score_hidden is a boolean for when the above score-related fields are hidden
+# due to subreddit rules. with a sufficient hours_to_wait delay, this shouldn't
+# be true for the checked comments.
 SCORE_HIDDEN_COL = 'score_hidden'
 # collapsed is a boolean. it appears to be true when the comment (and all its
 # children) are collapsed in the UI. this most commonly happens when the comment
