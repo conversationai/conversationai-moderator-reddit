@@ -24,40 +24,50 @@ from check_mod_actions import get_comment_status
 from test_mocks import MockComment
 
 
+# Helper function to drop extraneous fields.
+def _get_comment_status_mod_fields(comment, has_mod_creds):
+  _cid, status_record = get_comment_status(comment, has_mod_creds)
+  return {
+      k: status_record[k]
+      for k in ['approved', 'removed', 'deleted']
+      if k in status_record
+  }
+
+
 class CheckModActionsTest(unittest.TestCase):
 
   def test_get_comment_status_normal_no_mod_creds(self):
     normal_comment = MockComment()
     self.assertEqual(
         {'removed': False, 'deleted': False},
-        get_comment_status(normal_comment, has_mod_creds=False))
+        _get_comment_status_mod_fields(normal_comment, has_mod_creds=False))
 
   def test_get_comment_status_normal_has_mod_creds(self):
     normal_comment = MockComment()
     self.assertEqual(
         {'approved': False, 'removed': False, 'deleted': False},
-        get_comment_status(normal_comment, has_mod_creds=True))
+        _get_comment_status_mod_fields(normal_comment, has_mod_creds=True))
 
   def test_get_comment_status_deleted_no_mod_creds(self):
     deleted_comment = MockComment(comment_text='[deleted]')
     deleted_comment.author = None
     self.assertEqual(
         {'removed': False, 'deleted': True},
-        get_comment_status(deleted_comment, has_mod_creds=False))
+        _get_comment_status_mod_fields(deleted_comment, has_mod_creds=False))
 
   def test_get_comment_status_deleted_has_mod_creds(self):
     deleted_comment = MockComment(comment_text='[deleted]')
     deleted_comment.author = None
     self.assertEqual(
         {'approved': False, 'removed': False, 'deleted': True},
-        get_comment_status(deleted_comment, has_mod_creds=True))
+        _get_comment_status_mod_fields(deleted_comment, has_mod_creds=True))
 
   def test_get_comment_status_removed_no_mod_creds(self):
     removed_comment = MockComment(comment_text='[removed]')
     removed_comment.author = None
     self.assertEqual(
         {'removed': True, 'deleted': False},
-        get_comment_status(removed_comment, has_mod_creds=False))
+        _get_comment_status_mod_fields(removed_comment, has_mod_creds=False))
 
   def test_get_comment_status_removed_has_mod_creds(self):
     # If we have mod creds, we don't look at the comment_text to determine if
@@ -66,13 +76,13 @@ class CheckModActionsTest(unittest.TestCase):
     removed_comment.author = None
     self.assertEqual(
         {'approved': False, 'removed': True, 'deleted': False},
-        get_comment_status(removed_comment, has_mod_creds=True))
+        _get_comment_status_mod_fields(removed_comment, has_mod_creds=True))
 
   def test_get_comment_status_approved_has_mod_creds(self):
     approved_comment = MockComment(approved=True)
     self.assertEqual(
         {'approved': True, 'removed': False, 'deleted': False},
-        get_comment_status(approved_comment, has_mod_creds=True))
+         _get_comment_status_mod_fields(approved_comment, has_mod_creds=True))
 
 
 if __name__ == '__main__':

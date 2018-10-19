@@ -54,66 +54,169 @@ COLLAPSED_COL = 'collapsed'
 FILENAME_OUTPUT_PREFIX = 'modactions'
 
 
-def write_moderator_actions(reddit,
-                            record,
-                            id_key,
-                            timestamp_key,
-                            output_path,
-                            hours_to_wait,
-                            has_mod_creds):
-  create_time_utc = datetime.strptime(record[timestamp_key], '%Y%m%d_%H%M%S')
-  check_time_utc = create_time_utc + timedelta(hours=hours_to_wait)
-  wait_until(check_time_utc)
+# TODO: This implementation of batching is a bit complex: read_lines yields
+# sentinel values at regular intervals so that read_batches is able to yield
+# batches within max_batch_delay. The issue is that when reading from the end of
+# the file, there could be an indeterminate amount of time until the next line,
+# which would cause accumulated lines to be "stranded".
+#
+# This can almost certainly be done in a simpler way...
 
-  record['action_checked_utc'] = log_subreddit_comments.now_timestamp()
-  status_fields = fetch_reddit_comment_status(reddit, record[id_key],
-                                              has_mod_creds)
-  if status_fields is not None:
-    record.update(status_fields)
+def read_lines(input_path, stop_at_eof, yield_every_period, sentinel):
+  """Read lines from file.
 
-  log_subreddit_comments.append_records(output_path, [record])
+  Args:
+    input_path: (str) where to read from
+    stop_at_eof: (bool) returns reaching end of file if true.
+    yield_every_period: (timedelta) yields sentinel value every time period if
+        stream doesn't have contents.
+    sentinel: value yielded every yield_every_period
+
+  Yields: lines from input_path, or sentinel values
+  """
+  with open(input_path) as f:
+    last_time = datetime.utcnow()
+    while True:
+      now = datetime.utcnow()
+      where = f.tell()
+      line = f.readline()
+      if line:
+        print('.', end='')
+        sys.stdout.flush()
+        yield line
+        last_time = now
+      elif stop_at_eof:
+        print('\nread_lines stopping due to stop_at_eof.')
+        return
+      elif now - last_time > yield_every_period:
+        yield sentinel
+        last_time = now
+      else:
+        print('\n(eof, waiting {})'.format(yield_every_period))
+        time.sleep(yield_every_period.total_seconds())
+        f.seek(where)
 
 
-def fetch_reddit_comment_status(reddit, comment_id, has_mod_creds):
+_PRAW_BATCH_SIZE = 100
+
+
+def read_batches(input_path, stop_at_eof, max_batch_delay):
+  """Yields batches from input_path."""
+  current_batch = []
+  last_yield_time = datetime.utcnow()
+  sentinel = object()
+  # read_lines may yield a line right before the max_batch_delay is reached,
+  # so we divide the delay by 2 to ensure we get batches out within
+  # max_batch_delay.
+  for line in read_lines(input_path, stop_at_eof, max_batch_delay/2, sentinel):
+    now = datetime.utcnow()
+    if line is not sentinel:
+      current_batch.append(line)
+    if (current_batch
+        and (len(current_batch) == _PRAW_BATCH_SIZE
+             or now - last_yield_time > max_batch_delay)):
+      print('batch(', len(current_batch), ')')
+      yield current_batch
+      current_batch = []
+      last_yield_time = now
+
+  # read_lines exited
+  if current_batch:
+    yield current_batch
+
+
+def read_records_with_wait(input_path, stop_at_eof, max_batch_delay,
+                           timestamp_key, wait_delta):
+  """Yields batches, waiting until all items are old enough."""
+  for batch in read_batches(input_path, stop_at_eof, max_batch_delay):
+    records = [json.loads(line) for line in batch]
+    youngest = max(r[timestamp_key] for r in records)
+    create_time_utc = datetime.strptime(youngest, '%Y%m%d_%H%M%S')
+    wait_until(create_time_utc + wait_delta)
+    yield records
+
+
+# reddit.info() requires 'fullname' IDs. Comment fullname IDs include a
+# 't1_' prefix.
+def prefix_comment_id(i):
+  """Return 'fullname' version of ID (includes Reddit type prefix)."""
+  return i if i.startswith('t1_') else 't1_' + i
+
+
+# TODO: this function is complicated because reddit.info() _may_ omit data
+# (i.e. given 100 comments, it may return fewer than 100 Comment objects). so,
+# there's extra bookkeeping to check for dropped records. if this ~never
+# happens, we can simplify this code significantly.
+def check_mod_actions(output_path, reddit, comments, id_key, has_mod_creds):
+  comment_ids = [prefix_comment_id(c[id_key]) for c in comments]
+  statuses = fetch_comment_statuses(reddit, comment_ids, has_mod_creds)
+
+  # Index comments by ID so we can attach the status data to the comment
+  # records. (Cannot simply zip comments with statuses, since reddit.info() may
+  # drop records.)
+  comments_by_id = {c[id_key]: c for c in comments}
+  for comment_id, status in statuses:
+    if not comment_id or not status:
+      continue
+    if comment_id not in comments_by_id:
+      print('BUG: status comment ID not in comments_by_id, dupe?', comment_id)
+      continue
+    comment = comments_by_id[comment_id]
+    comment.update(status)
+    comment['action_checked_utc'] = log_subreddit_comments.now_timestamp()
+    # Remove from record keeping so we can detect if there are leftover comments
+    # for which we failed to fetch the status.
+    del comments_by_id[comment_id]
+  if comments_by_id:
+    print('BUG: {} comments did not have status data. ids: {}'.format(
+        len(comments_by_id), list(comments_by_id.keys())))
+
+  log_subreddit_comments.append_records(output_path, comments)
+
+
+def fetch_comment_statuses(reddit, comment_ids, has_mod_creds):
   try:
-    comment = reddit.comment(comment_id)
-    return get_comment_status(comment, has_mod_creds)
+    return (get_comment_status(c, has_mod_creds)
+            for c in reddit.info(comment_ids))
   except Exception as e:
-    print('\nFailed to check comment status due to exception:', e)
+    print('\nERROR: Failed to fetch comment statuses:', e)
     if has_mod_creds:
       print('(Maybe missing moderator credentials?)')
-    return None
+    return []
 
-
-# TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
-# do more extensive, careful testing for comments that are
-# approved-by-moderator, removed-by-moderator, and deleted-by-user when the bot
-# user has mod privileges and when it doesn't have mod privileges.
 def get_comment_status(comment, has_mod_creds):
-  status = {
-      DELETED_COL: comment.author is None and comment.body == '[deleted]',
-      SCORE_COL: comment.score,
-      UPS_COL: comment.ups,
-      DOWNS_COL: comment.downs,
-      SCORE_HIDDEN_COL: comment.score_hidden,
-      COLLAPSED_COL: comment.collapsed,
-  }
-  if has_mod_creds:
-    status[APPROVED_COL] = comment.approved
-    status[REMOVED_COL] = comment.removed
-  else:
-    status[REMOVED_COL] = (comment.author is None
-                           and comment.body == '[removed]')
-  return status
+  try:
+    status = {
+        DELETED_COL: comment.author is None and comment.body == '[deleted]',
+        SCORE_COL: comment.score,
+        UPS_COL: comment.ups,
+        DOWNS_COL: comment.downs,
+        SCORE_HIDDEN_COL: comment.score_hidden,
+        COLLAPSED_COL: comment.collapsed,
+    }
+    # TODO: This is a bit hairy, and I'm not confident it's fully correct. Need to
+    # do more extensive, careful testing for comments that are
+    # approved-by-moderator, removed-by-moderator, and deleted-by-user when the
+    # bot user has mod privileges and when it doesn't have mod privileges.
+    if has_mod_creds:
+      status[APPROVED_COL] = comment.approved
+      status[REMOVED_COL] = comment.removed
+    else:
+      status[REMOVED_COL] = (comment.author is None
+                             and comment.body == '[removed]')
+    return comment.id, status
+  except Exception as e:
+    print('\nERROR: failed to get comment status:', e)
+    return None, None
 
 
 def wait_until(time_to_proceed_utc):
   """Waits until the current utc datetime is past time_to_proceed"""
   now = datetime.utcnow()
   if now < time_to_proceed_utc:
-    seconds_to_wait = (time_to_proceed_utc - now).seconds
-    print('\nWaiting %.1f seconds...' % seconds_to_wait)
-    time.sleep(seconds_to_wait)
+    wait_delta = time_to_proceed_utc - now
+    print('\nWaiting for {}...'.format(wait_delta))
+    time.sleep(wait_delta.total_seconds())
 
 
 def drop_prefix(s, pre):
@@ -154,6 +257,10 @@ def _main():
   parser.add_argument('-output_path', help='path to write output file')
   parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
                       default='creds.json')
+  parser.add_argument('-batch_delay_secs',
+                      help='max time to delay each request batch',
+                      type=float,
+                      default=60)
   parser.add_argument('-mod_creds',
                       help=('whether the bot has mod credentials. if set,'
                             ' the output contains "approved", "removed", and'
@@ -180,6 +287,7 @@ def _main():
                       action='store_true')
   parser.set_defaults(has_mod_creds=None)
   args = parser.parse_args()
+
   if args.has_mod_creds is None:
     raise ValueError('must explicitly use either -mod_creds or -no_mod_creds!')
 
@@ -198,27 +306,12 @@ def _main():
                        username=creds['reddit_username'],
                        password=creds['reddit_password'])
 
-  with open(args.input_path) as f:
-    # Loops through the file and waits at EOF for new data to be written.
-    while True:
-      where = f.tell()
-      line = f.readline()
-      print('.', end='')
-      sys.stdout.flush()
-      if line:
-        write_moderator_actions(reddit,
-                                json.loads(line),
-                                args.id_key,
-                                args.timestamp_key,
-                                output_path,
-                                args.hours_to_wait,
-                                args.has_mod_creds)
-      elif args.stop_at_eof:
-        return
-      else:
-        print('\nReached EOF. Waiting for new data...')
-        time.sleep(args.hours_to_wait * 3600)
-        f.seek(where)
+  for comments in read_records_with_wait(
+      args.input_path, args.stop_at_eof,
+      timedelta(seconds=args.batch_delay_secs),
+      args.timestamp_key, timedelta(hours=args.hours_to_wait)):
+    check_mod_actions(output_path, reddit, comments, args.id_key,
+                      args.has_mod_creds)
 
 
 if __name__ == '__main__':
