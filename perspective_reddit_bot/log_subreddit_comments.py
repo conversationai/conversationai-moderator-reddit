@@ -91,7 +91,7 @@ def comment_stream(stream):
           continue
         seen_comment_ids.append(x.id)
         yield x
-    except prawcore.exceptions.ServerError as e:
+    except (prawcore.exceptions.ServerError, prawcore.exceptions.ResponseException) as e:
       print('\n\nERROR while reading comment stream:', e)
       print('Waiting {} seconds before retrying...'.format(
           _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
@@ -124,15 +124,19 @@ def log_subreddit(creds, subreddits, output_dir):
                        password=creds['reddit_password'])
   subreddit = reddit.subreddit(all_subs)
 
-  for i, comment in enumerate(comment_stream(subreddit.stream)):
+  while True:
     try:
-      print('.', end='')
-      sys.stdout.flush()
-      output_record = create_comment_output_record(comment)
-      if i % 25 == 0: print_comment(i, output_record)
-      append_records(output_path, [output_record])
+      for i, comment in enumerate(comment_stream(subreddit.stream)):
+        print('.', end='')
+        sys.stdout.flush()
+        output_record = create_comment_output_record(comment)
+        if i % 25 == 0: print_comment(i, output_record)
+        append_records(output_path, [output_record])
     except Exception as e:
-      print('\n\nEXCEPTION!\nException: {}\nSkipping comment: {}\n', e, comment)
+      print('\n\nEXCEPTION!\nException: {}\n'.format(e))
+      print('Waiting {} seconds before retrying...'.format(
+          _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
+      time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
 
 
 def _read_subreddits_file(filename):
