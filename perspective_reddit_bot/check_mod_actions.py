@@ -56,6 +56,7 @@ FILENAME_OUTPUT_PREFIX = 'modactions'
 
 def seek_past_ids(f, ids_to_skip):
   """Seeks file handle past previously-seen ids."""
+  print('Seeking past previously checked records...')
   skipped = 0
   while True:
     pos = f.tell()
@@ -68,8 +69,6 @@ def seek_past_ids(f, ids_to_skip):
               len(ids_to_skip), skipped))
     cid = json.loads(line)['comment_id']
     if cid in ids_to_skip:
-      print('s', end='')
-      sys.stdout.flush()
       skipped += 1
     else:
       # Found record that shouldn't be skipped.
