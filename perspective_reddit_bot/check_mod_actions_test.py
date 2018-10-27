@@ -108,6 +108,13 @@ class CheckModActionsTest(unittest.TestCase):
       # IDs, but we expected to skip 1.
       seek_past_ids(input_handle, {"2"})
 
+  def test_seek_past_ids_dupe_records(self):
+    input_handle = StringIO.StringIO(
+        '{"comment_id": "1"}\n{"comment_id": "1"}\n{"comment_id": "2"}\n')
+    seek_past_ids(input_handle, {"1"})
+    self.assertEqual('{"comment_id": "2"}\n', input_handle.readline())
+    self.assertEqual('', input_handle.readline())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -73,7 +73,10 @@ def seek_past_ids(f, ids_to_skip):
       skipped += 1
     else:
       # Found record that shouldn't be skipped.
-      if skipped != len(ids_to_skip):
+      #
+      # NOTE: this check uses < and not != because potential duplicates in the
+      # input mean we may skip more records than expected.
+      if skipped < len(ids_to_skip):
         raise ValueError(
             'Expected to skip {} records, but actually skipped {}'.format(
                 len(ids_to_skip), skipped))
