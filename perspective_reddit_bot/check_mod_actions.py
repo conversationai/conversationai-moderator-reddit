@@ -54,6 +54,36 @@ COLLAPSED_COL = 'collapsed'
 FILENAME_OUTPUT_PREFIX = 'modactions'
 
 
+def seek_past_ids(f, ids_to_skip):
+  """Seeks file handle past previously-seen ids."""
+  print('Seeking past previously checked records...')
+  skipped = 0
+  while True:
+    pos = f.tell()
+    line = f.readline()
+    if not line:
+      raise ValueError(
+          'UNEXPECTED: Reached eof while skipping previously handled comments.'
+          ' Have all input records been checked? Expected number of records to'
+          ' skip: {}, actual records skipped: {}'.format(
+              len(ids_to_skip), skipped))
+    cid = json.loads(line)['comment_id']
+    if cid in ids_to_skip:
+      skipped += 1
+    else:
+      # Found record that shouldn't be skipped.
+      #
+      # NOTE: this check uses < and not != because potential duplicates in the
+      # input mean we may skip more records than expected.
+      if skipped < len(ids_to_skip):
+        raise ValueError(
+            'Expected to skip {} records, but actually skipped {}'.format(
+                len(ids_to_skip), skipped))
+      print('\nSkipped', skipped, 'records.')
+      f.seek(pos)  # Reset handle to first new record.
+      return
+
+
 # TODO: This implementation of batching is a bit complex: read_lines yields
 # sentinel values at regular intervals so that read_batches is able to yield
 # batches within max_batch_delay. The issue is that when reading from the end of
@@ -62,12 +92,14 @@ FILENAME_OUTPUT_PREFIX = 'modactions'
 #
 # This can almost certainly be done in a simpler way...
 
-def read_lines(input_path, stop_at_eof, yield_every_period, sentinel):
+def read_lines(input_path, stop_at_eof, ids_to_skip, yield_every_period,
+               sentinel):
   """Read lines from file.
 
   Args:
     input_path: (str) where to read from
     stop_at_eof: (bool) returns reaching end of file if true.
+    ids_to_skip: (str collection) list of IDs to skip.
     yield_every_period: (timedelta) yields sentinel value every time period if
         stream doesn't have contents.
     sentinel: value yielded every yield_every_period
@@ -75,15 +107,19 @@ def read_lines(input_path, stop_at_eof, yield_every_period, sentinel):
   Yields: lines from input_path, or sentinel values
   """
   with open(input_path) as f:
+    # This moves the file handle position past any records that already exist in
+    # the output. This allows the program to be restarted after failures and
+    # resume where it left off.
+    if ids_to_skip:
+      seek_past_ids(f, ids_to_skip)
     last_time = datetime.utcnow()
     while True:
       now = datetime.utcnow()
-      where = f.tell()
       line = f.readline()
       if line:
         print('.', end='')
         sys.stdout.flush()
-        yield line
+        yield json.loads(line)
         last_time = now
       elif stop_at_eof:
         print('\nread_lines stopping due to stop_at_eof.')
@@ -94,13 +130,12 @@ def read_lines(input_path, stop_at_eof, yield_every_period, sentinel):
       else:
         print('\n(eof, waiting {})'.format(yield_every_period))
         time.sleep(yield_every_period.total_seconds())
-        f.seek(where)
 
 
 _PRAW_BATCH_SIZE = 100
 
 
-def read_batches(input_path, stop_at_eof, max_batch_delay):
+def read_batches(input_path, stop_at_eof, ids_to_skip, max_batch_delay):
   """Yields batches from input_path."""
   current_batch = []
   last_yield_time = datetime.utcnow()
@@ -109,7 +144,8 @@ def read_batches(input_path, stop_at_eof, max_batch_delay):
   # so we divide the delay by 2 to ensure we get batches out within
   # max_batch_delay.
   lines_delay = timedelta(seconds=max_batch_delay.total_seconds() / 2)
-  for line in read_lines(input_path, stop_at_eof, lines_delay, sentinel):
+  for line in read_lines(input_path, stop_at_eof, ids_to_skip, lines_delay,
+                         sentinel):
     now = datetime.utcnow()
     if line is not sentinel:
       current_batch.append(line)
@@ -126,11 +162,11 @@ def read_batches(input_path, stop_at_eof, max_batch_delay):
     yield current_batch
 
 
-def read_records_with_wait(input_path, stop_at_eof, max_batch_delay,
+def read_records_with_wait(input_path, stop_at_eof, ids_to_skip, max_batch_delay,
                            timestamp_key, wait_delta):
   """Yields batches, waiting until all items are old enough."""
-  for batch in read_batches(input_path, stop_at_eof, max_batch_delay):
-    records = [json.loads(line) for line in batch]
+  for records in read_batches(input_path, stop_at_eof, ids_to_skip,
+                              max_batch_delay):
     youngest = max(r[timestamp_key] for r in records)
     create_time_utc = datetime.strptime(youngest, '%Y%m%d_%H%M%S')
     wait_until(create_time_utc + wait_delta)
@@ -249,6 +285,11 @@ def get_output_filename_from_input(in_file, hours_to_wait):
   return out_path
 
 
+def read_comment_ids(path):
+  with open(path) as f:
+    return { json.loads(line)['comment_id'] for line in f }
+
+
 def _main():
   parser = argparse.ArgumentParser(
       'Reads the output of moderate_subreddit.py or log_subreddit_comments.py'
@@ -295,8 +336,11 @@ def _main():
   output_path = (args.output_path
                  or get_output_filename_from_input(args.input_path,
                                                    args.hours_to_wait))
+  ids_to_skip = None
   if os.path.exists(output_path):
-    raise ValueError('Output filename exists already: {}'.format(output_path))
+    ids_to_skip = read_comment_ids(output_path)
+    print('Output file existed already. Read', len(ids_to_skip),
+          'existing records.')
 
   with open(args.creds) as f:
     creds = json.load(f)
@@ -308,9 +352,9 @@ def _main():
                        password=creds['reddit_password'])
 
   for comments in read_records_with_wait(
-      args.input_path, args.stop_at_eof,
-      timedelta(seconds=args.batch_delay_secs),
-      args.timestamp_key, timedelta(hours=args.hours_to_wait)):
+      args.input_path, args.stop_at_eof, ids_to_skip,
+      timedelta(seconds=args.batch_delay_secs), args.timestamp_key,
+      timedelta(hours=args.hours_to_wait)):
     check_mod_actions(output_path, reddit, comments, args.id_key,
                       args.has_mod_creds)
 
