@@ -191,7 +191,7 @@ def score_subreddit(creds_dict,
         '{}_{}_{}.json'.format(FILENAME_OUTPUT_PREFIX, subreddit_name,
                                now_timestamp()))
 
-  for i, comment in enumerate(comment_stream(subreddit.stream)):
+  for i, comment in enumerate(comment_stream(reddit, subreddit_name)):
     try:
       if i % 100 == 0 and i > 0:
         print(i)
