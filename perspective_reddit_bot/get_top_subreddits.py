@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import sys
 
 from bs4 import BeautifulSoup
@@ -42,10 +43,13 @@ def get_hot_list(soup):
 
 
 def main():
-  outfile = sys.argv[1]
+  parser = argparse.ArgumentParser('Scrape redditlist.com for top subreddits.')
+  parser.add_argument('out', help='output path')
+  args = parser.parse_args()
+
   all_subs = []
-  # There are actually only 34 pages of results at the moment, but redditlist.com
-  # doesn't throw errors, it just serves empty pages.
+  # There are actually only 34 pages of results at the moment, but
+  # redditlist.com doesn't throw errors, it just serves empty pages.
   for i in xrange(40):
     i += 1
     p = fetch_page(i)
@@ -53,8 +57,10 @@ def main():
     print('got', len(hots))  # should be 125 per page, except the last
     all_subs.extend(hots)
   print('got', len(all_subs), 'total')
-  with open(outfile, 'w') as f:
-    f.write('\n'.join(all_subs))
+
+  with open(args.out, 'w') as f:
+    for s in all_subs:
+      f.write(s + '\n')
   print('done')
 
 
