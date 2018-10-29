@@ -113,6 +113,9 @@ def _main():
 
   with open(args.input_path) as in_handle:
     total, unique = get_counts(in_handle, args.id_key)
+  if total == unique:
+    print('total == unique {}, no deduping required'.format(unique))
+    sys.exit(0)
 
   output_path = args.output_path or get_output_path_from_input(args.input_path)
   if os.path.exists(output_path):
