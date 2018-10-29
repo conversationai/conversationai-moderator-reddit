@@ -18,9 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import StringIO
 import unittest
 
-from check_mod_actions import get_comment_status
+from check_mod_actions import get_comment_status, seek_past_ids
 from test_mocks import MockComment
 
 
@@ -83,6 +84,36 @@ class CheckModActionsTest(unittest.TestCase):
     self.assertEqual(
         {'approved': True, 'removed': False, 'deleted': False},
          _get_comment_status_mod_fields(approved_comment, has_mod_creds=True))
+
+  def test_seek_past_ids_success(self):
+    input_handle = StringIO.StringIO(
+        '{"comment_id": "1"}\n{"comment_id": "2"}\n')
+    seek_past_ids(input_handle, {"1"})
+    self.assertEqual('{"comment_id": "2"}\n', input_handle.readline())
+    self.assertEqual('', input_handle.readline())
+
+  def test_seek_past_ids_error_reached_eof(self):
+    buf = '{"comment_id": "1"}\n{"comment_id": "2"}\n'
+    input_handle = StringIO.StringIO(buf)
+    with self.assertRaises(ValueError):
+      seek_past_ids(input_handle, {"1", "2"})
+    # Reached end of buffer.
+    self.assertEqual(len(buf), input_handle.tell())
+
+  def test_seek_past_ids_error_unexpected_skips(self):
+    input_handle = StringIO.StringIO(
+        '{"comment_id": "1"}\n{"comment_id": "2"}\n')
+    with self.assertRaises(ValueError):
+      # This fails because record 1 isn't in ids_to_skip, so we don't skip any
+      # IDs, but we expected to skip 1.
+      seek_past_ids(input_handle, {"2"})
+
+  def test_seek_past_ids_dupe_records(self):
+    input_handle = StringIO.StringIO(
+        '{"comment_id": "1"}\n{"comment_id": "1"}\n{"comment_id": "2"}\n')
+    seek_past_ids(input_handle, {"1"})
+    self.assertEqual('{"comment_id": "2"}\n', input_handle.readline())
+    self.assertEqual('', input_handle.readline())
 
 
 if __name__ == '__main__':
