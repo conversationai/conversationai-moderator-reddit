@@ -1,5 +1,6 @@
 astroid==1.6.4
 backports.functools-lru-cache==1.5
+beautifulsoup4==4.6.3
 certifi==2018.4.16
 chardet==3.0.4
 configparser==3.5.0
