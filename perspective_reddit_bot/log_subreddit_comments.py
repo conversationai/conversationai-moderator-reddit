@@ -78,27 +78,34 @@ def print_comment(i, record):
 
 
 _PRAW_INITIAL_COMMENTS = 100
-_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS = 15
+_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS = 5
 
 
-def comment_stream(stream):
+# TODO: would be really nice to have more thorough tests for this logic, that
+# it's properly robust to errors, etc.
+def comment_stream(reddit, subs):
   """Yields new comments. Handles errors and retries."""
-  seen_comment_ids = deque(maxlen=_PRAW_INITIAL_COMMENTS)
+  # Use 2x initial comments size to allow for potential out-of-order delivery.
+  seen_comment_ids = deque(maxlen=_PRAW_INITIAL_COMMENTS * 2)
   while True:
     try:
-      for x in stream.comments():
-        if x.id in seen_comment_ids:  # Don't return already-seen comments.
+      for c in reddit.subreddit(subs).stream.comments():
+        if c.id in seen_comment_ids:  # Don't return already-seen comments.
           continue
-        seen_comment_ids.append(x.id)
-        yield x
-    except prawcore.exceptions.ServerError as e:
-      print('\n\nERROR while reading comment stream:', e)
+        seen_comment_ids.append(c.id)
+        # Access field on the comment to force lazy data to be fetched within
+        # exception handler.
+        _ = len(c.body)
+        yield c
+    except prawcore.exceptions.ResponseException as e:
+      print('\n\nError while reading comment stream: {}'.format(e),
+            file=sys.stderr)
       print('Waiting {} seconds before retrying...'.format(
           _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
       time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
 
 
-def log_subreddit(creds, subreddits, output_dir):
+def log_subreddit(creds, subreddits, output_dir, print_every_n):
   """Log subreddit commments.
 
   Args:
@@ -122,17 +129,21 @@ def log_subreddit(creds, subreddits, output_dir):
                        user_agent=creds['reddit_user_agent'],
                        username=creds['reddit_username'],
                        password=creds['reddit_password'])
-  subreddit = reddit.subreddit(all_subs)
-
-  for i, comment in enumerate(comment_stream(subreddit.stream)):
+  while True:
     try:
-      print('.', end='')
-      sys.stdout.flush()
-      output_record = create_comment_output_record(comment)
-      if i % 25 == 0: print_comment(i, output_record)
-      append_records(output_path, [output_record])
+      for i, comment in enumerate(comment_stream(reddit, all_subs)):
+        output_record = create_comment_output_record(comment)
+        if print_every_n and i % print_every_n == 0:
+          print_comment(i, output_record)
+        append_records(output_path, [output_record])
     except Exception as e:
-      print('\n\nEXCEPTION!\nException: {}\nSkipping comment: {}\n', e, comment)
+      # Note: This is a last-ditch exception handler. We expect errors to be
+      # caught within comment_record_stream and automatically retried, but just
+      # in case they aren't...
+      print('\n\nUNHANDLED EXCEPTION! {}'.format(e), file=sys.stderr)
+      print('Waiting {} seconds before retrying...'.format(
+          _PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS))
+      time.sleep(_PRAW_STREAM_ERROR_RETRY_WAIT_SECONDS)
 
 
 def _read_subreddits_file(filename):
@@ -148,6 +159,8 @@ def _main():
   parser.add_argument('-creds', help='JSON file Reddit/Perspective credentials',
                       default='creds.json')
   parser.add_argument('-output_dir', help=' where to save comments')
+  parser.add_argument('-print_every', help='print every nth comment', type=int,
+                      default=None)
   parser.add_argument('-subreddit', help='subreddit to log')
   parser.add_argument('-subreddits_file', help='file with list of subreddits')
 
@@ -169,8 +182,7 @@ def _main():
   with open(args.creds) as f:
     creds = json.load(f)
 
-
-  log_subreddit(creds, subs, args.output_dir)
+  log_subreddit(creds, subs, args.output_dir, args.print_every)
 
 
 if __name__ == '__main__':
