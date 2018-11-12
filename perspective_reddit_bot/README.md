@@ -5,9 +5,12 @@
 This repository contains a python script for a Reddit bot which uses the
 Perspective API to help moderate comments on a subreddit. By specifying rules
 in the `rules.yaml` file, the bot will check new comments on a given subreddit
-for triggering these rules and can report those that do. In order for the
-actions to be applied, the reddit credentials provided to the bot must have
-moderation permissions on the subreddit being moderated.
+for triggering these rules and can report those that do.
+
+In order for the actions to be applied, the reddit credentials provided to the
+bot must have moderation permissions on the subreddit being moderated.
+TODO(jetpack): I don't believe having mod permissions is strictly necessary -
+test this.
 
 ## Setup
 
@@ -35,9 +38,12 @@ moderation permissions on the subreddit being moderated.
 3. Set up a `creds.json` file with your Reddit and Perspective API credentials.
    This file can be created by copying `creds_template.json` and filling in the
    appropriate fields in the dictionary. You can find more information about
-   obtaining Reddit credentials from the [PRAW documentation](https://praw.readthedocs.io/en/latest/getting_started/authentication.html#script-application)
+   obtaining Reddit credentials from the [PRAW
+   documentation](https://praw.readthedocs.io/en/latest/getting_started/authentication.html#script-application)
    and Perspective API credentials from
-   [http://perspectiveapi.com/](http://perspectiveapi.com/).
+   [https://perspectiveapi.com/](https://perspectiveapi.com/) (the [quickstart
+   guide](https://github.com/conversationai/perspectiveapi/blob/master/quickstart.md)
+   gives steps you'll need to take).
 
 4. Modify the moderation rules in `rules.yaml` as appropriate for your
    moderation task. The file contains comments with instructions on the syntax
@@ -60,15 +66,45 @@ Once the setup is complete the bot can be run with the command:
 python moderate_subreddit.py $SUBREDDIT_NAME
 ```
 
-where you can replace $SUBREDDIT_NAME with the name of the subreddit you wish
+where you can replace `$SUBREDDIT_NAME` with the name of the subreddit you wish
 to help moderate.
 
 You can optionally specify the `-output_dir` flag to record the scores of
-comments seen by the bot in jsonlines format.
+comments seen by the bot in ndjson format. This is _required_ if you want to use
+the `check_mod_actions` and `compute_bot_metrics` in order to see how accurate
+the bot's actions are.
+
 
 ## Quantitative evaluation of bot actions
 
-TODO: add some notes on running `check_mod_actions`.
+### Check moderation actions
+
+Run the `check_mod_actions` tool in order to see whether reports made by the bot
+were removed by mods.
+
+```shell
+python check_mod_actions.py \
+  -input_path $MODERATE_SUBREDDIT_OUTPUT_FILE \
+  -output_path $CHECK_MOD_ACTIONS_OUTPUT_FILE \
+  -no_mod_creds \
+  -stop_at_eof \
+  -hours_to_wait 24
+```
+
+The `-input_path` argument is the file written by `moderate_subreddit.py`. This
+file contains the comments scored and actions taken by the bot.
+
+This tool checks the moderation actions of all comments and saves the data to
+`-output_path`.
+
+`-stop_at_eof` indicates that the tool should stop running once it reaches the
+end of the input file. If this isn't given, the tool will continue to read new
+data appended to the input.
+
+`-hours_to_wait` indicates how long to wait after a comment was posted before
+checking whether it was removed by a moderator.
+
+### Computing metrics
 
 The output of `check_mod_actions` can be evaluated to see how well the bot is
 performing. Namely: how well is the bot flagging comments that should be
@@ -89,8 +125,6 @@ removed for another reason) and recall may be artificially low (as the rule may
 be penalized for comments that it was not supposed to capture). However, both
 metrics still provide some evidence as to the effectiveness of the rule.
 
-
-
 ```shell
-python compute_bot_metrics.py $check_mod_actions_output_file
+python compute_bot_metrics.py $CHECK_MOD_ACTIONS_OUTPUT_FILE
 ```
