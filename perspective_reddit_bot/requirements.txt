@@ -17,7 +17,7 @@ prawcore==0.14.0
 pylint==1.9.0
 python-dateutil==2.7.3
 pytz==2018.4
-PyYAML==3.13
+PyYAML==4.2b1
 requests==2.20.0
 scikit-learn==0.19.2
 scipy==1.1.0
